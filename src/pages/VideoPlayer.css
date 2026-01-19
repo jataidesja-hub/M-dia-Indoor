@@ -118,3 +118,30 @@
   to { transform: rotate(360deg); }
 }
 
+
+.error-suggestion {
+  max-width: 80%;
+  padding: 15px;
+  margin: 15px 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-retry {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-retry:hover {
+  background: var(--primary-hover);
+}
+
