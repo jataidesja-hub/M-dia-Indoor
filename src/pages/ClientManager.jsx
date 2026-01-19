@@ -1,14 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { UserPlus, Search, Edit2, Trash2, Upload, Video as VideoIcon } from 'lucide-react';
+import { UserPlus, Search, Edit2, Trash2, Upload, Video as VideoIcon, Calendar } from 'lucide-react';
 import Modal from '../components/Modal';
 import './VideoManager.css';
 
 const ClientManager = () => {
-    const [clients, setClients] = useState([
-        { id: 1, name: 'João Silva', email: 'joao@transporte.com', phone: '(11) 99999-9999', plan: 'Mensal', status: 'Ativo', videoName: 'propaganda_v1.mp4' },
-        { id: 2, name: 'Maria Santos', email: 'maria@logistica.com', phone: '(11) 88888-8888', plan: 'Trimestral', status: 'Ativo', videoName: 'institucional.mp4' },
-    ]);
+    // Initial state from localStorage or mock
+    const [clients, setClients] = useState(() => {
+        const saved = localStorage.getItem('clients');
+        return saved ? JSON.parse(saved) : [
+            { id: 1, name: 'João Silva', email: 'joao@transporte.com', phone: '(11) 99999-9999', plan: 'Mensal', status: 'Ativo', videoName: 'propaganda_v1.mp4', startDate: '2026-01-01', endDate: '2026-01-31' },
+            { id: 2, name: 'Maria Santos', email: 'maria@logistica.com', phone: '(11) 88888-8888', plan: 'Trimestral', status: 'Ativo', videoName: 'institucional.mp4', startDate: '2026-01-15', endDate: '2026-04-15' },
+        ];
+    });
+
+    useEffect(() => {
+        localStorage.setItem('clients', JSON.stringify(clients));
+    }, [clients]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClient, setEditingClient] = useState(null);
@@ -19,8 +27,24 @@ const ClientManager = () => {
         plan: 'Mensal',
         status: 'Ativo',
         videoFile: null,
-        videoName: ''
+        videoName: '',
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: ''
     });
+
+    // Auto-calculate end date when plan or start date changes
+    useEffect(() => {
+        if (formData.startDate) {
+            const start = new Date(formData.startDate);
+            let duration = 30;
+            if (formData.plan === 'Semanal') duration = 7;
+            if (formData.plan === 'Trimestral') duration = 90;
+
+            const end = new Date(start);
+            end.setDate(start.getDate() + duration);
+            setFormData(prev => ({ ...prev, endDate: end.toISOString().split('T')[0] }));
+        }
+    }, [formData.plan, formData.startDate]);
 
     const handleOpenModal = (client = null) => {
         if (client) {
@@ -32,7 +56,9 @@ const ClientManager = () => {
                 plan: client.plan,
                 status: client.status,
                 videoName: client.videoName || '',
-                videoFile: null
+                videoFile: null,
+                startDate: client.startDate || new Date().toISOString().split('T')[0],
+                endDate: client.endDate || ''
             });
         } else {
             setEditingClient(null);
@@ -43,7 +69,9 @@ const ClientManager = () => {
                 plan: 'Mensal',
                 status: 'Ativo',
                 videoFile: null,
-                videoName: ''
+                videoName: '',
+                startDate: new Date().toISOString().split('T')[0],
+                endDate: ''
             });
         }
         setIsModalOpen(true);
@@ -64,7 +92,9 @@ const ClientManager = () => {
             phone: formData.phone,
             plan: formData.plan,
             status: formData.status,
-            videoName: formData.videoName
+            videoName: formData.videoName,
+            startDate: formData.startDate,
+            endDate: formData.endDate
         };
 
         if (editingClient) {
@@ -103,6 +133,7 @@ const ClientManager = () => {
                             <th>Nome</th>
                             <th>Contato</th>
                             <th>Plano</th>
+                            <th>Adesão / Término</th>
                             <th>Vídeo</th>
                             <th>Status</th>
                             <th className="text-right">Ações</th>
@@ -117,6 +148,12 @@ const ClientManager = () => {
                                     <div>{c.phone}</div>
                                 </td>
                                 <td><span className="badge-plan">{c.plan}</span></td>
+                                <td>
+                                    <div className="date-info">
+                                        <div className="date-row"><Calendar size={12} /> {c.startDate}</div>
+                                        <div className="date-row end"><Calendar size={12} /> {c.endDate}</div>
+                                    </div>
+                                </td>
                                 <td>
                                     <div className="video-cell-mini">
                                         <VideoIcon size={14} />
@@ -146,13 +183,15 @@ const ClientManager = () => {
                         <label>Nome Completo</label>
                         <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
                     </div>
-                    <div className="form-group">
-                        <label>E-mail</label>
-                        <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                        <label>Telefone</label>
-                        <input type="text" required value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+                    <div className="form-grid">
+                        <div className="form-group">
+                            <label>E-mail</label>
+                            <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                        </div>
+                        <div className="form-group">
+                            <label>Telefone</label>
+                            <input type="text" required value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+                        </div>
                     </div>
                     <div className="form-grid">
                         <div className="form-group">
@@ -169,6 +208,17 @@ const ClientManager = () => {
                                 <option value="Ativo">Ativo</option>
                                 <option value="Inativo">Inativo</option>
                             </select>
+                        </div>
+                    </div>
+
+                    <div className="form-grid">
+                        <div className="form-group">
+                            <label>Data de Adesão</label>
+                            <input type="date" required value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} />
+                        </div>
+                        <div className="form-group">
+                            <label>Data de Término</label>
+                            <input type="date" readOnly value={formData.endDate} className="readonly-input" />
                         </div>
                     </div>
 
