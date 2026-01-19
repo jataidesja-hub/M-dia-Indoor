@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertCircle, Loader2, Play } from 'lucide-react';
+import { AlertCircle, Loader2, Play, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { getVideo } from '../utils/db';
 import './VideoPlayer.css';
 
@@ -10,22 +11,8 @@ const VideoPlayer = () => {
     const [error, setError] = useState(false);
     const [currentBlobUrl, setCurrentBlobUrl] = useState('');
     const videoRef = useRef(null);
-
-    const getDirectVideoUrl = (url) => {
-        if (!url) return '';
-        if (url.includes('drive.google.com')) {
-            let fileId = '';
-            const match = url.match(/\/file\/d\/([^\/]+)/) || url.match(/id=([^&]+)/);
-            if (match && match[1]) {
-                fileId = match[1];
-                return `https://docs.google.com/uc?id=${fileId}&export=download`;
-            }
-        }
-        if (url.includes('dropbox.com')) {
-            return url.replace('dl=0', 'dl=1').replace('www.dropbox.com', 'dl.dropboxusercontent.com');
-        }
-        return url;
-    };
+    const navigate = useNavigate();
+    const driverName = localStorage.getItem('currentUserName') || 'Motorista';
 
     useEffect(() => {
         const savedPlaylist = localStorage.getItem('playlist');
@@ -42,6 +29,22 @@ const VideoPlayer = () => {
         }
     };
 
+    const handleLogout = () => {
+        const driverId = localStorage.getItem('currentUserId');
+        if (driverId) {
+            const drivers = JSON.parse(localStorage.getItem('drivers') || '[]');
+            const updatedDrivers = drivers.map(d =>
+                d.id.toString() === driverId.toString() ? { ...d, status: 'Offline' } : d
+            );
+            localStorage.setItem('drivers', JSON.stringify(updatedDrivers));
+        }
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('currentUserId');
+        localStorage.removeItem('currentUserName');
+        navigate('/');
+    };
+
     useEffect(() => {
         const loadVideo = async () => {
             if (playlist.length === 0) return;
@@ -50,12 +53,27 @@ const VideoPlayer = () => {
             setError(false);
             setIsLoading(true);
 
-            // Clean up old blob URL if any
             if (currentBlobUrl) {
                 URL.revokeObjectURL(currentBlobUrl);
             }
 
             let finalUrl = '';
+
+            const getDirectVideoUrl = (url) => {
+                if (!url) return '';
+                if (url.includes('drive.google.com')) {
+                    let fileId = '';
+                    const match = url.match(/\/file\/d\/([^\/]+)/) || url.match(/id=([^&]+)/);
+                    if (match && match[1]) {
+                        fileId = match[1];
+                        return `https://docs.google.com/uc?id=${fileId}&export=download`;
+                    }
+                }
+                if (url.includes('dropbox.com')) {
+                    return url.replace('dl=0', 'dl=1').replace('www.dropbox.com', 'dl.dropboxusercontent.com');
+                }
+                return url;
+            };
 
             if (currentVideo.videoType === 'local') {
                 try {
@@ -89,7 +107,7 @@ const VideoPlayer = () => {
                     await videoRef.current.play();
                     setIsLoading(false);
                 } catch (err) {
-                    console.log("Auto-play failed, usually browser restriction.");
+                    console.log("Auto-play failed.");
                 }
             };
             playVideo();
@@ -103,6 +121,9 @@ const VideoPlayer = () => {
                     <AlertCircle size={48} color="var(--primary)" />
                     <h2>Aguardando Playlist</h2>
                     <p>Adicione vídeos no Painel ADM.</p>
+                    <button className="logout-mini" onClick={handleLogout}>
+                        <LogOut size={16} /> Sair
+                    </button>
                 </div>
             </div>
         );
@@ -122,14 +143,7 @@ const VideoPlayer = () => {
                 autoPlay
                 playsInline
                 className="full-video"
-                style={{
-                    width: '100vw',
-                    height: '100vh',
-                    objectFit: 'cover',
-                    display: error ? 'none' : 'block'
-                }}
                 onError={(e) => {
-                    console.error("Erro no carregamento:", currentVideo.videoName);
                     setError(true);
                     setIsLoading(false);
                     setTimeout(handleVideoEnd, 3000);
@@ -139,29 +153,21 @@ const VideoPlayer = () => {
             {isLoading && !error && (
                 <div className="player-loader">
                     <Loader2 className="animate-spin" size={48} />
-                    <p>Carregando {currentVideo.videoType === 'local' ? 'do Disco' : 'da Nuvem'}...</p>
-                </div>
-            )}
-
-            {error && (
-                <div className="player-error">
-                    <AlertCircle size={48} color="var(--danger)" />
-                    <h2>Mídia Não Encontrada</h2>
-                    <p>O arquivo local ou link do vídeo está inacessível.</p>
-                    <div className="error-suggestion glass">
-                        <p><strong>Dica:</strong> Se selecionou "Arquivo Local", o vídeo deve ter sido enviado NESTE tablet.</p>
-                    </div>
-                    <button className="btn-retry" onClick={handleVideoEnd}>Próximo Vídeos</button>
+                    <p>Carregando Mídia...</p>
                 </div>
             )}
 
             <div className="player-overlay">
                 <div className="brand-dot"></div>
-                <span className="live-tag">TELA ATIVA: {currentVideo.videoName}</span>
+                <span className="live-tag">REPRODUZINDO: {currentVideo.videoName}</span>
+                <button className="logout-corner" onClick={handleLogout}>
+                    <LogOut size={16} /> Parar Reprodução
+                </button>
             </div>
 
             <div className="client-brand">
                 {currentVideo.name}
+                <div className="driver-info">Logado como: {driverName}</div>
             </div>
         </div>
     );
