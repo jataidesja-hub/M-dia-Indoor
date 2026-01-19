@@ -37,7 +37,7 @@ function App() {
           {/* Admin Routes with Sidebar - Protected */}
           <Route path="/admin/*" element={
             <ProtectedRoute>
-              <div style={{ display: 'flex', width: '100%' }}>
+              <div className="admin-layout">
                 <Sidebar />
                 <main className="content">
                   <Routes>

@@ -25,7 +25,14 @@ const Login = () => {
         }
 
         // Driver Credentials
-        const drivers = JSON.parse(localStorage.getItem('drivers') || '[]');
+        let drivers = [];
+        try {
+            const saved = localStorage.getItem('drivers');
+            drivers = saved ? JSON.parse(saved) : [];
+        } catch (err) {
+            drivers = [];
+        }
+
         const driver = drivers.find(d => d.email === email && d.password === password);
 
         if (driver) {

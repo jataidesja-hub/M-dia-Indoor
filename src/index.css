@@ -16,9 +16,9 @@
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.12);
-  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   --glass: rgba(30, 41, 59, 0.7);
   --glass-border: rgba(255, 255, 255, 0.1);
 }
@@ -36,9 +36,15 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  min-height: 100vh;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-title);
   font-weight: 600;
 }
@@ -66,8 +72,15 @@ a {
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fade-in {
@@ -77,12 +90,19 @@ a {
 /* Main Layout */
 .app-container {
   min-height: 100vh;
+  display: block;
+  /* Fixed from flex to avoid spoiling landing/login */
+}
+
+.admin-layout {
   display: flex;
+  width: 100%;
+  min-height: 100vh;
 }
 
 .content {
   flex: 1;
   padding: 2rem;
-  max-width: 1400px;
-  margin: 0 auto;
+  max-width: 100%;
+  /* Avoid restricting too much */
 }

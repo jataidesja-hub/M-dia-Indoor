@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertCircle, Loader2, Play, LogOut } from 'lucide-react';
+import { AlertCircle, Loader2, Play, LogOut, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getVideo } from '../utils/db';
 import './VideoPlayer.css';
@@ -10,6 +10,7 @@ const VideoPlayer = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(false);
     const [currentBlobUrl, setCurrentBlobUrl] = useState('');
+    const [isMuted, setIsMuted] = useState(true);
     const videoRef = useRef(null);
     const navigate = useNavigate();
     const driverName = localStorage.getItem('currentUserName') || 'Motorista';
@@ -81,7 +82,7 @@ const VideoPlayer = () => {
                     if (videoFile) {
                         finalUrl = URL.createObjectURL(videoFile);
                     } else {
-                        throw new Error('Arquivo local não encontrado');
+                        throw new Error('Arquivo local não encontrado. Certifique-se de que o vídeo foi enviado NESTE aparelho.');
                     }
                 } catch (err) {
                     console.error("Local load failed:", err);
@@ -106,21 +107,31 @@ const VideoPlayer = () => {
                     videoRef.current.load();
                     await videoRef.current.play();
                     setIsLoading(false);
+                    setError(false);
                 } catch (err) {
-                    console.log("Auto-play failed.");
+                    console.log("Autoplay blocked or failed. Waiting for interaction.");
+                    // Keep loading or show silent play button
                 }
             };
             playVideo();
         }
     }, [currentBlobUrl]);
 
+    // Force play on click anywhere if it's stuck loading
+    const forcePlay = () => {
+        if (videoRef.current) {
+            videoRef.current.play().catch(console.error);
+            setIsLoading(false);
+        }
+    };
+
     if (playlist.length === 0) {
         return (
             <div className="player-fullscreen placeholder-screen">
                 <div className="player-status glass">
                     <AlertCircle size={48} color="var(--primary)" />
-                    <h2>Aguardando Playlist</h2>
-                    <p>Adicione vídeos no Painel ADM.</p>
+                    <h2>Aguardando Grade</h2>
+                    <p>O administrador ainda não configurou os vídeos.</p>
                     <button className="logout-mini" onClick={handleLogout}>
                         <LogOut size={16} /> Sair
                     </button>
@@ -132,20 +143,26 @@ const VideoPlayer = () => {
     const currentVideo = playlist[currentVideoIndex];
 
     return (
-        <div className="player-fullscreen" style={{ background: 'black' }}>
+        <div className="player-fullscreen" style={{ background: 'black' }} onClick={forcePlay}>
             <video
                 ref={videoRef}
                 key={currentVideo.id + currentVideoIndex}
                 src={currentBlobUrl}
                 onEnded={handleVideoEnd}
-                onPlaying={() => setIsLoading(false)}
-                muted
+                onPlaying={() => {
+                    setIsLoading(false);
+                    setError(false);
+                }}
+                onWaiting={() => setIsLoading(true)}
+                muted={isMuted}
                 autoPlay
                 playsInline
                 className="full-video"
                 onError={(e) => {
+                    console.error("Erro no hardware de vídeo ou link quebrado.");
                     setError(true);
                     setIsLoading(false);
+                    // Auto-skip after error
                     setTimeout(handleVideoEnd, 3000);
                 }}
             />
@@ -153,21 +170,38 @@ const VideoPlayer = () => {
             {isLoading && !error && (
                 <div className="player-loader">
                     <Loader2 className="animate-spin" size={48} />
-                    <p>Carregando Mídia...</p>
+                    <p>Preparando Vídeo...</p>
+                    <button className="manual-play-btn" onClick={forcePlay}>
+                        <Play size={16} /> Toque se não iniciar
+                    </button>
+                </div>
+            )}
+
+            {error && (
+                <div className="player-error">
+                    <AlertCircle size={48} color="var(--danger)" />
+                    <h2>Mídia Não Disponível</h2>
+                    <p>O arquivo local ou link está inacessível neste momento.</p>
+                    <div className="error-suggestion glass">
+                        <p><strong>Dica:</strong> Se selecionou "Arquivo Local", o vídeo deve ser enviado no tablet que vai exibir.</p>
+                    </div>
+                    <button className="btn-retry" onClick={handleVideoEnd}>
+                        Próximo Vídeo <RefreshCw size={16} />
+                    </button>
                 </div>
             )}
 
             <div className="player-overlay">
                 <div className="brand-dot"></div>
-                <span className="live-tag">REPRODUZINDO: {currentVideo.videoName}</span>
-                <button className="logout-corner" onClick={handleLogout}>
-                    <LogOut size={16} /> Parar Reprodução
+                <span className="live-tag">ON-AIR: {currentVideo.videoName}</span>
+                <button className="logout-corner" onClick={(e) => { e.stopPropagation(); handleLogout(); }}>
+                    <LogOut size={16} /> Desconectar
                 </button>
             </div>
 
             <div className="client-brand">
-                {currentVideo.name}
-                <div className="driver-info">Logado como: {driverName}</div>
+                <span className="advertiser-name">{currentVideo.name}</span>
+                <div className="driver-info">Logado: {driverName}</div>
             </div>
         </div>
     );
