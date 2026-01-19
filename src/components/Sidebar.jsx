@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { useNavigate, NavLink } from 'react-router-dom';
 import {
     LayoutDashboard,
     Video,
@@ -12,6 +12,13 @@ import {
 import './Sidebar.css';
 
 const Sidebar = () => {
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        localStorage.removeItem('isAuthenticated');
+        navigate('/');
+    };
+
     return (
         <aside className="sidebar glass">
             <div className="sidebar-logo">
@@ -49,7 +56,7 @@ const Sidebar = () => {
             </nav>
 
             <div className="sidebar-footer">
-                <button className="nav-item logout">
+                <button className="nav-item logout" onClick={handleLogout}>
                     <LogOut size={20} />
                     <span>Sair</span>
                 </button>
