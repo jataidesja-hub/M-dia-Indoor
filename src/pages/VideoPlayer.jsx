@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import { AlertCircle, Loader2, Play } from 'lucide-react';
+import { getVideo } from '../utils/db';
 import './VideoPlayer.css';
 
 const VideoPlayer = () => {
@@ -7,30 +8,22 @@ const VideoPlayer = () => {
     const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(false);
-    const [retryCount, setRetryCount] = useState(0);
+    const [currentBlobUrl, setCurrentBlobUrl] = useState('');
     const videoRef = useRef(null);
 
-    const getDirectVideoUrl = (url, retry = 0) => {
+    const getDirectVideoUrl = (url) => {
         if (!url) return '';
-
-        // Handle Google Drive
         if (url.includes('drive.google.com')) {
             let fileId = '';
             const match = url.match(/\/file\/d\/([^\/]+)/) || url.match(/id=([^&]+)/);
             if (match && match[1]) {
                 fileId = match[1];
-                // Method 1: standard uc
-                if (retry === 0) return `https://docs.google.com/uc?export=download&id=${fileId}`;
-                // Method 2: drive.usercontent (newer)
-                return `https://drive.usercontent.google.com/download?id=${fileId}&export=download&authuser=0`;
+                return `https://docs.google.com/uc?id=${fileId}&export=download`;
             }
         }
-
-        // Handle Dropbox
         if (url.includes('dropbox.com')) {
             return url.replace('dl=0', 'dl=1').replace('www.dropbox.com', 'dl.dropboxusercontent.com');
         }
-
         return url;
     };
 
@@ -45,36 +38,63 @@ const VideoPlayer = () => {
         if (playlist.length > 0) {
             setError(false);
             setIsLoading(true);
-            setRetryCount(0);
             setCurrentVideoIndex((prev) => (prev + 1) % playlist.length);
         }
     };
 
-    const handleRetry = () => {
-        if (retryCount < 1) {
-            setRetryCount(retryCount + 1);
+    useEffect(() => {
+        const loadVideo = async () => {
+            if (playlist.length === 0) return;
+
+            const currentVideo = playlist[currentVideoIndex];
             setError(false);
             setIsLoading(true);
-        } else {
-            handleVideoEnd(); // Skip if second method also fails
-        }
-    };
+
+            // Clean up old blob URL if any
+            if (currentBlobUrl) {
+                URL.revokeObjectURL(currentBlobUrl);
+            }
+
+            let finalUrl = '';
+
+            if (currentVideo.videoType === 'local') {
+                try {
+                    const videoFile = await getVideo(currentVideo.id);
+                    if (videoFile) {
+                        finalUrl = URL.createObjectURL(videoFile);
+                    } else {
+                        throw new Error('Arquivo local não encontrado');
+                    }
+                } catch (err) {
+                    console.error("Local load failed:", err);
+                    setError(true);
+                    setIsLoading(false);
+                    return;
+                }
+            } else {
+                finalUrl = getDirectVideoUrl(currentVideo.videoUrl);
+            }
+
+            setCurrentBlobUrl(finalUrl);
+        };
+
+        loadVideo();
+    }, [currentVideoIndex, playlist]);
 
     useEffect(() => {
-        if (videoRef.current && playlist.length > 0) {
+        if (videoRef.current && currentBlobUrl) {
             const playVideo = async () => {
                 try {
-                    setError(false);
                     videoRef.current.load();
                     await videoRef.current.play();
                     setIsLoading(false);
                 } catch (err) {
-                    console.log("Play failed, waiting for data...");
+                    console.log("Auto-play failed, usually browser restriction.");
                 }
             };
             playVideo();
         }
-    }, [currentVideoIndex, playlist, retryCount]);
+    }, [currentBlobUrl]);
 
     if (playlist.length === 0) {
         return (
@@ -89,17 +109,15 @@ const VideoPlayer = () => {
     }
 
     const currentVideo = playlist[currentVideoIndex];
-    const videoUrl = getDirectVideoUrl(currentVideo.videoUrl, retryCount);
 
     return (
         <div className="player-fullscreen" style={{ background: 'black' }}>
             <video
                 ref={videoRef}
-                key={currentVideo.id + currentVideoIndex + retryCount}
-                src={videoUrl}
+                key={currentVideo.id + currentVideoIndex}
+                src={currentBlobUrl}
                 onEnded={handleVideoEnd}
                 onPlaying={() => setIsLoading(false)}
-                onLoadStart={() => setIsLoading(true)}
                 muted
                 autoPlay
                 playsInline
@@ -111,42 +129,35 @@ const VideoPlayer = () => {
                     display: error ? 'none' : 'block'
                 }}
                 onError={(e) => {
-                    console.error("Erro no vídeo:", currentVideo.videoName);
-                    if (retryCount < 1) {
-                        handleRetry();
-                    } else {
-                        setError(true);
-                        setIsLoading(false);
-                        setTimeout(handleVideoEnd, 3000);
-                    }
+                    console.error("Erro no carregamento:", currentVideo.videoName);
+                    setError(true);
+                    setIsLoading(false);
+                    setTimeout(handleVideoEnd, 3000);
                 }}
             />
 
             {isLoading && !error && (
                 <div className="player-loader">
                     <Loader2 className="animate-spin" size={48} />
-                    <p>Carregando Mídia...</p>
-                    <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>Tentativa {retryCount + 1}</span>
+                    <p>Carregando {currentVideo.videoType === 'local' ? 'do Disco' : 'da Nuvem'}...</p>
                 </div>
             )}
 
             {error && (
                 <div className="player-error">
                     <AlertCircle size={48} color="var(--danger)" />
-                    <h2>Não foi possível carregar</h2>
-                    <p>O Google Drive bloqueou o acesso a este arquivo.</p>
+                    <h2>Mídia Não Encontrada</h2>
+                    <p>O arquivo local ou link do vídeo está inacessível.</p>
                     <div className="error-suggestion glass">
-                        <p><strong>Dica:</strong> Seus vídeos são pequenos, tente usar o <strong>Dropbox</strong> ou <strong>Discord</strong> como hospedagem. O Google Drive é instável para players automáticos.</p>
+                        <p><strong>Dica:</strong> Se selecionou "Arquivo Local", o vídeo deve ter sido enviado NESTE tablet.</p>
                     </div>
-                    <button className="btn-retry" onClick={handleVideoEnd}>
-                        <RefreshCw size={16} /> Tentar Próximo
-                    </button>
+                    <button className="btn-retry" onClick={handleVideoEnd}>Próximo Vídeos</button>
                 </div>
             )}
 
             <div className="player-overlay">
                 <div className="brand-dot"></div>
-                <span className="live-tag">REPRODUZINDO: {currentVideo.videoName}</span>
+                <span className="live-tag">TELA ATIVA: {currentVideo.videoName}</span>
             </div>
 
             <div className="client-brand">

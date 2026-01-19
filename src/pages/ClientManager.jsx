@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { UserPlus, Search, Edit2, Trash2, Link, Upload, Video as VideoIcon, Calendar, Info, AlertCircle } from 'lucide-react';
+import { UserPlus, Search, Edit2, Trash2, Link, Upload, Video as VideoIcon, Calendar, Info, AlertCircle, CheckCircle2 } from 'lucide-react';
 import Modal from '../components/Modal';
+import { saveVideo, deleteVideo } from '../utils/db';
 import './VideoManager.css';
 
 const ClientManager = () => {
     const [clients, setClients] = useState(() => {
         const saved = localStorage.getItem('clients');
-        return saved ? JSON.parse(saved) : [
-            { id: 1, name: 'Exemplo Coca-Cola', email: 'contato@coca.com', phone: '(11) 99999-0000', plan: 'Mensal', status: 'Ativo', videoName: 'propaganda_v1.mp4', videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-city-traffic-at-night-seen-from-above-41005-large.mp4', startDate: '2026-01-01', endDate: '2026-01-31' },
-        ];
+        return saved ? JSON.parse(saved) : [];
     });
 
     useEffect(() => {
@@ -26,9 +25,13 @@ const ClientManager = () => {
         status: 'Ativo',
         videoUrl: '',
         videoName: '',
+        videoType: 'link', // 'link' or 'local'
+        videoFile: null,
         startDate: new Date().toISOString().split('T')[0],
         endDate: ''
     });
+
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (formData.startDate) {
@@ -54,6 +57,8 @@ const ClientManager = () => {
                 status: client.status,
                 videoUrl: client.videoUrl || '',
                 videoName: client.videoName || '',
+                videoType: client.videoType || 'link',
+                videoFile: null,
                 startDate: client.startDate || new Date().toISOString().split('T')[0],
                 endDate: client.endDate || ''
             });
@@ -67,6 +72,8 @@ const ClientManager = () => {
                 status: 'Ativo',
                 videoUrl: '',
                 videoName: '',
+                videoType: 'link',
+                videoFile: null,
                 startDate: new Date().toISOString().split('T')[0],
                 endDate: ''
             });
@@ -74,30 +81,61 @@ const ClientManager = () => {
         setIsModalOpen(true);
     };
 
-    const handleSave = (e) => {
-        e.preventDefault();
-        const clientData = {
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            plan: formData.plan,
-            status: formData.status,
-            videoUrl: formData.videoUrl,
-            videoName: formData.videoName || (formData.videoUrl ? 'Vídeo via Link' : ''),
-            startDate: formData.startDate,
-            endDate: formData.endDate
-        };
-
-        if (editingClient) {
-            setClients(clients.map(c => c.id === editingClient.id ? { ...c, ...clientData } : c));
-        } else {
-            setClients([...clients, { id: Date.now(), ...clientData }]);
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setFormData({
+                ...formData,
+                videoType: 'local',
+                videoFile: file,
+                videoName: file.name,
+                videoUrl: '' // Clear URL if file is selected
+            });
         }
-        setIsModalOpen(false);
     };
 
-    const handleDelete = (id) => {
+    const handleSave = async (e) => {
+        e.preventDefault();
+        setIsSaving(true);
+
+        try {
+            const clientId = editingClient ? editingClient.id : Date.now();
+
+            // If local file, save to IndexedDB
+            if (formData.videoType === 'local' && formData.videoFile) {
+                await saveVideo(clientId, formData.videoFile);
+            }
+
+            const clientData = {
+                id: clientId,
+                name: formData.name,
+                email: formData.email,
+                phone: formData.phone,
+                plan: formData.plan,
+                status: formData.status,
+                videoUrl: formData.videoUrl,
+                videoName: formData.videoName,
+                videoType: formData.videoType,
+                startDate: formData.startDate,
+                endDate: formData.endDate
+            };
+
+            if (editingClient) {
+                setClients(clients.map(c => c.id === editingClient.id ? clientData : c));
+            } else {
+                setClients([...clients, clientData]);
+            }
+            setIsModalOpen(false);
+        } catch (error) {
+            alert('Erro ao salvar vídeo localmente: ' + error.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDelete = async (id) => {
         if (window.confirm('Excluir cliente?')) {
+            await deleteVideo(id);
             setClients(clients.filter(c => c.id !== id));
         }
     };
@@ -123,10 +161,9 @@ const ClientManager = () => {
                     <thead>
                         <tr>
                             <th>Nome</th>
-                            <th>Contato</th>
                             <th>Plano</th>
                             <th>Adesão / Término</th>
-                            <th>Vídeo</th>
+                            <th>Vídeo / Origem</th>
                             <th>Status</th>
                             <th className="text-right">Ações</th>
                         </tr>
@@ -135,10 +172,6 @@ const ClientManager = () => {
                         {clients.map((c) => (
                             <tr key={c.id}>
                                 <td>{c.name}</td>
-                                <td>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{c.email}</div>
-                                    <div>{c.phone}</div>
-                                </td>
                                 <td><span className="badge-plan">{c.plan}</span></td>
                                 <td>
                                     <div className="date-info">
@@ -149,7 +182,8 @@ const ClientManager = () => {
                                 <td>
                                     <div className="video-cell-mini">
                                         <VideoIcon size={14} />
-                                        <span>{c.videoName || 'Sem vídeo'}</span>
+                                        <span>{c.videoName}</span>
+                                        <span className="source-tag">{c.videoType === 'local' ? 'Local' : 'Nuvem'}</span>
                                     </div>
                                 </td>
                                 <td>
@@ -174,16 +208,6 @@ const ClientManager = () => {
                     <div className="form-group">
                         <label>Nome Completo</label>
                         <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-                    </div>
-                    <div className="form-grid">
-                        <div className="form-group">
-                            <label>E-mail</label>
-                            <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-                        </div>
-                        <div className="form-group">
-                            <label>Telefone</label>
-                            <input type="text" required value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
-                        </div>
                     </div>
 
                     <div className="form-grid">
@@ -215,28 +239,70 @@ const ClientManager = () => {
                         </div>
                     </div>
 
-                    <div className="form-group">
-                        <label>URL do Vídeo (Google Drive, Dropbox, etc)</label>
-                        <div className="input-with-icon">
-                            <Link size={18} />
-                            <input
-                                type="url"
-                                placeholder="https://drive.google.com/file/d/..."
-                                value={formData.videoUrl}
-                                onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
-                            />
+                    <div className="tabs-container">
+                        <div className="tabs-header">
+                            <button
+                                type="button"
+                                className={formData.videoType === 'link' ? 'tab-btn active' : 'tab-btn'}
+                                onClick={() => setFormData({ ...formData, videoType: 'link' })}
+                            >
+                                <Link size={16} /> Link (Nuvem)
+                            </button>
+                            <button
+                                type="button"
+                                className={formData.videoType === 'local' ? 'tab-btn active' : 'tab-btn'}
+                                onClick={() => setFormData({ ...formData, videoType: 'local' })}
+                            >
+                                <Upload size={16} /> Arquivo Local
+                            </button>
                         </div>
-                        <p className="field-hint">No GDrive, o vídeo deve ter menos de 100MB e estar como "Público".</p>
+
+                        <div className="tab-content">
+                            {formData.videoType === 'link' ? (
+                                <div className="form-group">
+                                    <label>URL do Vídeo (Google Drive, Dropbox, etc)</label>
+                                    <div className="input-with-icon">
+                                        <Link size={18} />
+                                        <input
+                                            type="url"
+                                            placeholder="https://drive.google.com/file/d/..."
+                                            value={formData.videoUrl}
+                                            onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value, videoName: 'Vídeo via Link' })}
+                                        />
+                                    </div>
+                                    <p className="field-hint">Use para vídeos já hospedados na internet.</p>
+                                </div>
+                            ) : (
+                                <div className="form-group">
+                                    <label>Selecionar Arquivo de Vídeo</label>
+                                    <div className={`upload-container ${formData.videoFile ? 'has-file' : ''}`} onClick={() => document.getElementById('video-upload').click()}>
+                                        {formData.videoFile ? <CheckCircle2 size={32} color="var(--primary)" /> : <Upload size={32} />}
+                                        <span>{formData.videoName || 'Toque para selecionar o vídeo do tablet'}</span>
+                                        {formData.videoFile && <p className="file-size">{(formData.videoFile.size / 1024 / 1024).toFixed(2)} MB pronto para salvar</p>}
+                                        <input
+                                            id="video-upload"
+                                            type="file"
+                                            accept="video/*"
+                                            style={{ display: 'none' }}
+                                            onChange={handleFileChange}
+                                        />
+                                    </div>
+                                    <p className="field-hint">O vídeo ficará salvo apenas NESTE tablet/computador.</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="info-box glass" style={{ borderColor: 'var(--warning)', color: '#fbbf24', background: 'rgba(251, 191, 36, 0.05)' }}>
+                    <div className="info-box glass" style={{ borderColor: 'var(--primary)', color: '#93c5fd' }}>
                         <AlertCircle size={16} />
-                        <p><strong>Aviso:</strong> Se a tela ficar preta, o arquivo é muito grande ou o link está bloqueado pelo Google. Tente reduzir o tamanho do vídeo.</p>
+                        <p><strong>Dica:</strong> Para reprodução garantida sem internet, use a opção <strong>Arquivo Local</strong>.</p>
                     </div>
 
                     <div className="modal-footer">
-                        <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-                        <button type="submit" className="btn-primary">Salvar Cliente</button>
+                        <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)} disabled={isSaving}>Cancelar</button>
+                        <button type="submit" className="btn-primary" disabled={isSaving}>
+                            {isSaving ? 'Salvando...' : 'Salvar Cliente'}
+                        </button>
                     </div>
                 </form>
             </Modal>
