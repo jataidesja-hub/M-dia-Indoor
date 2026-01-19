@@ -1,0 +1,46 @@
+.player-fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: black;
+    overflow: hidden;
+    z-index: 9999;
+}
+
+.full-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.player-overlay {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    padding: 8px 16px;
+    border-radius: 100px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    pointer-events: none;
+}
+
+.brand-dot {
+    width: 8px;
+    height: 8px;
+    background: red;
+    border-radius: 50%;
+    box-shadow: 0 0 10px red;
+}
+
+.live-tag {
+    color: white;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
