@@ -4,6 +4,7 @@ import {
     LayoutDashboard,
     Video,
     Users,
+    Truck,
     Settings,
     MonitorPlay,
     LogOut
@@ -32,6 +33,11 @@ const Sidebar = () => {
                 <NavLink to="/admin/clients" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
                     <Users size={20} />
                     <span>Clientes</span>
+                </NavLink>
+
+                <NavLink to="/admin/drivers" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+                    <Truck size={20} />
+                    <span>Motoristas</span>
                 </NavLink>
 
                 <div className="nav-divider"></div>

@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import VideoManager from './pages/VideoManager';
 import ClientManager from './pages/ClientManager';
+import DriverManager from './pages/DriverManager';
 import VideoPlayer from './pages/VideoPlayer';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
                   <Route path="dashboard" element={<Dashboard />} />
                   <Route path="videos" element={<VideoManager />} />
                   <Route path="clients" element={<ClientManager />} />
+                  <Route path="drivers" element={<DriverManager />} />
                   <Route path="*" element={<Navigate to="dashboard" replace />} />
                 </Routes>
               </main>
