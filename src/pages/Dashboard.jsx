@@ -3,199 +3,145 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Users,
     Video,
-    TrendingUp,
-    Clock,
-    Activity,
-    AlertCircle,
     Truck,
-    MapPin,
-    ShieldCheck,
-    Pulse
+    Activity,
+    Clock,
+    Trophy,
+    AlertCircle,
+    Signal,
+    Power,
+    ArrowUpRight
 } from 'lucide-react';
 import './Dashboard.css';
 
-const StatCard = ({ title, value, icon: Icon, trend, color, subtitle }) => (
-    <motion.div
-        whileHover={{ y: -5, scale: 1.02 }}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`stat-card-premium glass ${color}`}
-    >
-        <div className="stat-glow"></div>
-        <div className="stat-content">
-            <div className="stat-header">
-                <div className="icon-badge">
-                    <Icon size={24} />
-                </div>
-                {trend && (
-                    <div className={`trend-tag ${trend.startsWith('+') ? 'positive' : 'neutral'}`}>
-                        <TrendingUp size={12} />
-                        <span>{trend}</span>
-                    </div>
-                )}
-            </div>
-            <div className="stat-main">
-                <h3 className="stat-title">{title}</h3>
-                <div className="value-container">
-                    <span className="stat-value">{value}</span>
-                </div>
-                {subtitle && <p className="stat-subtitle">{subtitle}</p>}
-            </div>
-            <div className="stat-footer-progress">
-                <div className="progress-bg">
-                    <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: '70%' }}
-                        transition={{ duration: 1, delay: 0.5 }}
-                        className="progress-fill"
-                    ></motion.div>
-                </div>
-            </div>
-        </div>
-    </motion.div>
-);
-
 const Dashboard = () => {
     const [stats, setStats] = useState({
-        totalClients: 0,
-        activeVideos: 0,
-        onlineDrivers: 0,
-        totalHours: 0,
-        drivers: []
+        clients: [],
+        playlist: [],
+        drivers: [],
+        onlineCount: 0,
+        activeCampaigns: 0
     });
 
-    const updateDashboardData = () => {
-        const clients = JSON.parse(localStorage.getItem('clients') || '[]');
-        const activeClients = clients.filter(c => c.status === 'Ativo').length;
-        const playlist = JSON.parse(localStorage.getItem('playlist') || '[]');
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    const refreshData = () => {
         const drivers = JSON.parse(localStorage.getItem('drivers') || '[]');
-        const onlineDriversList = drivers.filter(d => d.status === 'Online');
+        const clients = JSON.parse(localStorage.getItem('clients') || '[]');
+        const playlist = JSON.parse(localStorage.getItem('playlist') || '[]');
 
         setStats({
-            totalClients: activeClients,
-            activeVideos: playlist.length,
-            onlineDrivers: onlineDriversList.length,
-            totalHours: (onlineDriversList.length * 12) + (Math.random() * 5), // Mock dynamic hours
-            drivers: drivers
+            drivers,
+            clients,
+            playlist,
+            onlineCount: drivers.filter(d => d.status === 'Online').length,
+            activeCampaigns: clients.filter(c => c.status === 'Ativo').length
         });
+        setCurrentTime(new Date());
     };
 
     useEffect(() => {
-        updateDashboardData();
-        // Polling para atualização "automática" de status
-        const interval = setInterval(updateDashboardData, 3000);
+        refreshData();
+        const interval = setInterval(refreshData, 3000); // Atualiza a cada 3s
         return () => clearInterval(interval);
     }, []);
 
     return (
-        <div className="dashboard-wrapper">
-            <header className="dash-hero">
-                <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="hero-text"
-                >
-                    <div className="live-indicator">
-                        <span className="pulse-dot"></span>
-                        SISTEMA EM OPERAÇÃO
-                    </div>
-                    <h1>Monitoramento Geral</h1>
-                    <p>Controle de frota e exibição em tempo real.</p>
-                </motion.div>
+        <div className="dash-premium-wrapper">
+            {/* Top Bar / Hero */}
+            <header className="dash-top-hero">
+                <div className="hero-content">
+                    <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                    >
+                        <span className="live-badge">
+                            <span className="dot"></span> EM OPERAÇÃO
+                        </span>
+                        <h1>Central de Controle</h1>
+                        <p>Monitoramento global da rede de mídia indoor.</p>
+                    </motion.div>
+                </div>
 
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="dash-clock glass"
-                >
-                    <Clock size={20} className="text-primary" />
-                    <div className="time-stack">
-                        <span className="current-time">{new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                        <span className="current-date">{new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}</span>
+                <div className="hero-stats glass">
+                    <div className="time-box">
+                        <Clock size={16} />
+                        <span>{currentTime.toLocaleTimeString('pt-BR')}</span>
                     </div>
-                </motion.div>
+                </div>
             </header>
 
-            <div className="stats-grid-premium">
+            {/* Main Stats Grid */}
+            <div className="main-stats-grid">
                 <StatCard
-                    title="Anunciantes Ativos"
-                    value={stats.totalClients}
-                    icon={Users}
-                    trend="+12%"
-                    color="blue-stat"
-                    subtitle="Campanhas rodando agora"
-                />
-                <StatCard
-                    title="Grade de Mídia"
-                    value={stats.activeVideos}
-                    icon={Video}
-                    trend="+3"
-                    color="purple-stat"
-                    subtitle="Vídeos na playlist global"
-                />
-                <StatCard
-                    title="Veículos Ativos"
-                    value={stats.onlineDrivers}
                     icon={Truck}
-                    trend="LIVE"
-                    color="emerald-stat"
-                    subtitle={`${stats.drivers.filter(d => d.status === 'Offline').length} desconectados`}
+                    label="Veículos Online"
+                    value={stats.onlineCount}
+                    subValue={`de ${stats.drivers.length} totais`}
+                    color="emerald"
                 />
                 <StatCard
-                    title="Tempo de Exposição"
-                    value={`${Math.floor(stats.totalHours)}h`}
+                    icon={Users}
+                    label="Anunciantes Ativos"
+                    value={stats.activeCampaigns}
+                    subValue="Campanhas no ar"
+                    color="blue"
+                />
+                <StatCard
+                    icon={Video}
+                    label="Mídias na Grade"
+                    value={stats.playlist.length}
+                    subValue="Vídeos em rotação"
+                    color="purple"
+                />
+                <StatCard
                     icon={Activity}
-                    trend="+8%"
-                    color="orange-stat"
-                    subtitle="Acumulado do dia"
+                    label="Saúde da Rede"
+                    value="98.5%"
+                    subValue="Uptime garantido"
+                    color="orange"
                 />
             </div>
 
-            <div className="dashboard-grid-main">
-                <section className="fleet-status glass">
-                    <div className="section-header">
-                        <div className="title-with-icon">
-                            <Truck size={20} />
-                            <h3>Status da Frota</h3>
+            <div className="dash-two-columns">
+                {/* Fleet Monitor */}
+                <section className="fleet-monitor glass">
+                    <div className="card-header">
+                        <div className="title">
+                            <Signal size={18} />
+                            <h3>Status da Frota em Tempo Real</h3>
                         </div>
-                        <div className="status-counts">
-                            <span className="count-tag online">{stats.onlineDrivers} Online</span>
-                            <span className="count-tag offline">{stats.drivers.length - stats.onlineDrivers} Offline</span>
-                        </div>
+                        <span className="pulse-text">Painel Dinâmico</span>
                     </div>
 
-                    <div className="driver-list-scroll">
-                        <AnimatePresence mode='popLayout'>
+                    <div className="driver-monitor-list">
+                        <AnimatePresence>
                             {stats.drivers.length === 0 ? (
-                                <div className="empty-dash">
-                                    <AlertCircle size={40} opacity={0.2} />
-                                    <p>Nenhum motorista cadastrado.</p>
+                                <div className="empty-state">
+                                    <AlertCircle size={32} />
+                                    <p>Nenhum motorista cadastrado ainda.</p>
                                 </div>
                             ) : (
-                                stats.drivers.map((driver) => (
+                                stats.drivers.map(driver => (
                                     <motion.div
                                         layout
                                         key={driver.id}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, scale: 0.95 }}
-                                        className={`driver-card-dash ${driver.status.toLowerCase()}`}
+                                        className={`driver-status-card ${driver.status.toLowerCase()}`}
                                     >
-                                        <div className="driver-main-info">
-                                            <div className="status-marker"></div>
-                                            <div className="info-text">
-                                                <p className="d-name">{driver.name}</p>
-                                                <p className="d-vehicle">{driver.vehicle}</p>
-                                            </div>
+                                        <div className="driver-avatar-box">
+                                            <Power size={14} />
                                         </div>
-                                        <div className="driver-meta">
-                                            <div className="meta-item">
-                                                <MapPin size={12} />
-                                                <span>Rota Ativa</span>
-                                            </div>
-                                            <div className="status-label">
-                                                {driver.status === 'Online' ? 'CONECTADO' : 'OFFLINE'}
-                                            </div>
+                                        <div className="driver-details">
+                                            <span className="name">{driver.name}</span>
+                                            <span className="vehicle">{driver.vehicle}</span>
+                                        </div>
+                                        <div className="driver-status-badges">
+                                            <span className={`status-tag ${driver.status.toLowerCase()}`}>
+                                                {driver.status}
+                                            </span>
+                                            {driver.status === 'Online' && (
+                                                <span className="time-badge">Ativo Agora</span>
+                                            )}
                                         </div>
                                     </motion.div>
                                 ))
@@ -204,47 +150,39 @@ const Dashboard = () => {
                     </div>
                 </section>
 
-                <section className="network-health glass">
-                    <div className="section-header">
-                        <div className="title-with-icon">
-                            <ShieldCheck size={20} />
-                            <h3>Saúde do Sistema</h3>
+                {/* Network Performance */}
+                <section className="performance-card glass">
+                    <div className="card-header">
+                        <div className="title">
+                            <Trophy size={18} />
+                            <h3>Desempenho da Rede</h3>
                         </div>
                     </div>
 
-                    <div className="health-metrics">
-                        <div className="metric-row">
-                            <span>Sinal de GPS</span>
-                            <div className="health-bar"><div className="fill green" style={{ width: '94%' }}></div></div>
-                            <span className="pct">94%</span>
+                    <div className="performance-chart-mock">
+                        <div className="bars-container">
+                            {[40, 70, 45, 90, 65, 85, 100].map((h, i) => (
+                                <motion.div
+                                    key={i}
+                                    initial={{ height: 0 }}
+                                    animate={{ height: `${h}%` }}
+                                    className="bar"
+                                ></motion.div>
+                            ))}
                         </div>
-                        <div className="metric-row">
-                            <span>Latência Média</span>
-                            <div className="health-bar"><div className="fill blue" style={{ width: '20%' }}></div></div>
-                            <span className="pct">32ms</span>
-                        </div>
-                        <div className="metric-row">
-                            <span>Sincronia de Dados</span>
-                            <div className="health-bar"><div className="fill purple" style={{ width: '100%' }}></div></div>
-                            <span className="pct">100%</span>
+                        <div className="chart-labels">
+                            <span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span><span>D</span>
                         </div>
                     </div>
 
-                    <div className="live-activity-feed">
-                        <h4>Atividade Recente</h4>
-                        <div className="feed-item">
-                            <div className="feed-icon"><Pulse size={14} /></div>
-                            <div className="feed-text">
-                                <p><strong>Campanha Coca-Cola</strong> iniciada em 4 veículos.</p>
-                                <span>Há 2 min</span>
-                            </div>
+                    <div className="mini-stats">
+                        <div className="m-stat">
+                            <span>Alcance Diário</span>
+                            <strong>+1.2k views</strong>
                         </div>
-                        <div className="feed-item">
-                            <div className="feed-icon"><Users size={14} /></div>
-                            <div className="feed-text">
-                                <p>Novo anunciante <strong>Super Premium</strong> aprovado.</p>
-                                <span>Há 15 min</span>
-                            </div>
+                        <div className="m-stat">
+                            <span>Média por Tablet</span>
+                            <strong>4.2h / dia</strong>
                         </div>
                     </div>
                 </section>
@@ -252,5 +190,25 @@ const Dashboard = () => {
         </div>
     );
 };
+
+const StatCard = ({ icon: Icon, label, value, subValue, color }) => (
+    <motion.div
+        whileHover={{ y: -5, scale: 1.02 }}
+        className={`stat-premium-card ${color}`}
+    >
+        <div className="card-bg-effect"></div>
+        <div className="card-icon">
+            <Icon size={28} />
+        </div>
+        <div className="card-content">
+            <span className="label">{label}</span>
+            <span className="value">{value}</span>
+            <span className="subvalue">{subValue}</span>
+        </div>
+        <div className="card-arrow">
+            <ArrowUpRight size={16} />
+        </div>
+    </motion.div>
+);
 
 export default Dashboard;
