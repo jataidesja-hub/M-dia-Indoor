@@ -1,167 +1,101 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import {
-    Plus,
-    Search,
-    Trash2,
-    Play,
-    ArrowUp,
-    ArrowDown,
-    ChevronRight,
-    MonitorCheck
-} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, Trash2, ArrowUp, ArrowDown, Video as VideoIcon, Save, Play } from 'lucide-react';
+import { db, collections } from '../firebase';
+import { collection, doc, updateDoc, onSnapshot, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import './VideoManager.css';
 
 const VideoManager = () => {
-    // Load clients to get their videos
-    const [clients, setClients] = useState(() => {
-        const saved = localStorage.getItem('clients');
-        return saved ? JSON.parse(saved) : [];
-    });
+    const [availableVideos, setAvailableVideos] = useState([]);
+    const [playlist, setPlaylist] = useState([]);
 
-    // Playlist management
-    const [playlist, setPlaylist] = useState(() => {
-        const saved = localStorage.getItem('playlist');
-        return saved ? JSON.parse(saved) : [];
-    });
-
-    // Filter clients to those that actually have videos
-    const availableVideos = clients.filter(c => c.videoName && c.status === 'Ativo');
-
+    // Sincronizar Vídeos de Clientes e Playlist da Nuvem
     useEffect(() => {
-        localStorage.setItem('playlist', JSON.stringify(playlist));
-    }, [playlist]);
+        const unsubClients = onSnapshot(collection(db, collections.CLIENTS), (snap) => {
+            const videos = snap.docs
+                .map(doc => ({ id: doc.id, ...doc.data() }))
+                .filter(c => c.status === 'Ativo' && c.videoUrl);
+            setAvailableVideos(videos);
+        });
 
-    const handleTogglePlaylist = (video) => {
-        const isInPlaylist = playlist.find(p => p.id === video.id);
-        if (isInPlaylist) {
-            setPlaylist(playlist.filter(p => p.id !== video.id));
-        } else {
-            setPlaylist([...playlist, { ...video, order: playlist.length }]);
-        }
+        const unsubPlaylist = onSnapshot(doc(db, 'global', 'playlist'), (snap) => {
+            if (snap.exists()) {
+                setPlaylist(snap.data().items || []);
+            }
+        });
+
+        return () => { unsubClients(); unsubPlaylist(); };
+    }, []);
+
+    const addToPlaylist = async (video) => {
+        const newItem = {
+            id: video.id + Date.now(),
+            originalId: video.id,
+            videoName: video.videoName,
+            videoUrl: video.videoUrl,
+            name: video.name
+        };
+        const newPlaylist = [...playlist, newItem];
+        await setDoc(doc(db, 'global', 'playlist'), { items: newPlaylist });
     };
 
-    const moveItem = (index, direction) => {
+    const removeFromPlaylist = async (id) => {
+        const newPlaylist = playlist.filter(item => item.id !== id);
+        await setDoc(doc(db, 'global', 'playlist'), { items: newPlaylist });
+    };
+
+    const moveItem = async (index, direction) => {
         const newPlaylist = [...playlist];
-        const newIndex = index + direction;
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
         if (newIndex >= 0 && newIndex < newPlaylist.length) {
-            const temp = newPlaylist[index];
-            newPlaylist[index] = newPlaylist[newIndex];
-            newPlaylist[newIndex] = temp;
-            setPlaylist(newPlaylist);
+            [newPlaylist[index], newPlaylist[newIndex]] = [newPlaylist[newIndex], newPlaylist[index]];
+            await setDoc(doc(db, 'global', 'playlist'), { items: newPlaylist });
         }
-    };
-
-    const handleRemoveFromPlaylist = (id) => {
-        setPlaylist(playlist.filter(v => v.id !== id));
     };
 
     return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="manager-container">
+        <div className="manager-container">
             <header className="manager-header">
-                <div>
-                    <h1>Grade de Programação</h1>
-                    <p>Selecione e organize os vídeos dos clientes para exibição.</p>
-                </div>
-                <div className="current-status">
-                    <MonitorCheck size={18} />
-                    <span>{playlist.length} Vídeos na Playlist</span>
-                </div>
+                <h1>Grade de Programação (Nuvem)</h1>
             </header>
 
-            <div className="dashboard-content-grid">
-                {/* Available Videos from Clients */}
-                <div className="content-card glass">
-                    <h3>Vídeos Disponíveis (Clientes Ativos)</h3>
-                    <div className="table-container no-border">
-                        <table className="custom-table">
-                            <thead>
-                                <tr>
-                                    <th>Cliente</th>
-                                    <th>Vídeo</th>
-                                    <th className="text-right">Ação</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {availableVideos.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="3" className="text-center" style={{ padding: '2rem', color: 'var(--text-muted)' }}>
-                                            Nenhum vídeo disponível. Cadastre clientes com vídeos ativos.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    availableVideos.map((v) => {
-                                        const isInPlaylist = playlist.find(p => p.id === v.id);
-                                        return (
-                                            <tr key={v.id}>
-                                                <td>{v.name}</td>
-                                                <td className="video-cell-mini">
-                                                    <Play size={12} />
-                                                    {v.videoName}
-                                                </td>
-                                                <td className="text-right">
-                                                    <button
-                                                        className={`badge ${isInPlaylist ? 'warning' : 'success'}`}
-                                                        onClick={() => handleTogglePlaylist(v)}
-                                                        style={{ cursor: 'pointer', border: 'none' }}
-                                                    >
-                                                        {isInPlaylist ? 'Remover' : 'Adicionar'}
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                {/* Current Playlist Ordering */}
-                <div className="content-card glass">
-                    <h3>Ordem de Exibição</h3>
-                    <div className="playlist-order-list">
-                        {playlist.length === 0 ? (
-                            <div className="empty-playlist" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                Sua playlist está vazia.
-                            </div>
-                        ) : (
-                            playlist.map((v, index) => (
-                                <div key={v.id} className="playlist-item glass">
-                                    <div className="order-number">{index + 1}</div>
-                                    <div className="playlist-item-info">
-                                        <p className="title">{v.videoName}</p>
-                                        <p className="subtitle">{v.name}</p>
-                                    </div>
-                                    <div className="playlist-item-actions">
-                                        <button
-                                            className="order-btn"
-                                            onClick={() => moveItem(index, -1)}
-                                            disabled={index === 0}
-                                        >
-                                            <ArrowUp size={16} />
-                                        </button>
-                                        <button
-                                            className="order-btn"
-                                            onClick={() => moveItem(index, 1)}
-                                            disabled={index === playlist.length - 1}
-                                        >
-                                            <ArrowDown size={16} />
-                                        </button>
-                                        <button
-                                            className="icon-btn delete"
-                                            onClick={() => handleRemoveFromPlaylist(v.id)}
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
+            <div className="dash-two-columns">
+                <section className="glass p-4">
+                    <h3>Vídeos de Clientes Ativos</h3>
+                    <div className="video-list-grid mt-4">
+                        {availableVideos.map(video => (
+                            <div key={video.id} className="video-card-mini glass">
+                                <div className="info">
+                                    <p><strong>{video.videoName}</strong></p>
+                                    <span>{video.name}</span>
                                 </div>
-                            ))
-                        )}
+                                <button className="icon-btn success" onClick={() => addToPlaylist(video)}><Plus size={16} /></button>
+                            </div>
+                        ))}
                     </div>
-                </div>
+                </section>
+
+                <section className="glass p-4">
+                    <h3>Playlist Atual (Ordem de Exibição)</h3>
+                    <div className="playlist-order-list mt-4">
+                        {playlist.map((item, index) => (
+                            <div key={item.id} className="playlist-item glass">
+                                <div className="order-number">{index + 1}</div>
+                                <div className="playlist-item-info">
+                                    <p className="title">{item.videoName}</p>
+                                    <p className="subtitle">{item.name}</p>
+                                </div>
+                                <div className="playlist-item-actions">
+                                    <button className="icon-btn" onClick={() => moveItem(index, 'up')} disabled={index === 0}><ArrowUp size={16} /></button>
+                                    <button className="icon-btn" onClick={() => moveItem(index, 'down')} disabled={index === playlist.length - 1}><ArrowDown size={16} /></button>
+                                    <button className="icon-btn delete" onClick={() => removeFromPlaylist(item.id)}><Trash2 size={16} /></button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
             </div>
-        </motion.div>
+        </div>
     );
 };
 

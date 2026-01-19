@@ -2,21 +2,25 @@ import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, LogIn, AlertCircle } from 'lucide-react';
+import { db, collections } from '../firebase';
+import { collection, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import './Login.css';
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const redirectTo = searchParams.get('to') || 'admin';
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
         setError('');
+        setIsLoggingIn(true);
 
-        // Admin Credentials
+        // Admin Credentials (Hardcoded for simplicity, but could be cloud)
         if (email === 'admin@midia.com' && password === 'admin123') {
             localStorage.setItem('isAuthenticated', 'true');
             localStorage.setItem('userRole', 'admin');
@@ -24,103 +28,50 @@ const Login = () => {
             return;
         }
 
-        // Driver Credentials
-        let drivers = [];
         try {
-            const saved = localStorage.getItem('drivers');
-            drivers = saved ? JSON.parse(saved) : [];
+            // Driver Login from Cloud
+            const querySnapshot = await getDocs(collection(db, collections.DRIVERS));
+            const drivers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const driver = drivers.find(d => d.email === email && d.password === password);
+
+            if (driver) {
+                await updateDoc(doc(db, collections.DRIVERS, driver.id), {
+                    status: 'Online',
+                    lastSeen: new Date().toLocaleString('pt-BR')
+                });
+
+                localStorage.setItem('isAuthenticated', 'true');
+                localStorage.setItem('userRole', 'driver');
+                localStorage.setItem('currentUserId', driver.id);
+                localStorage.setItem('currentUserName', driver.name);
+
+                navigate('/display');
+            } else {
+                setError('E-mail ou senha incorretos.');
+            }
         } catch (err) {
-            drivers = [];
+            setError('Erro ao conectar com a nuvem: ' + err.message);
+        } finally {
+            setIsLoggingIn(false);
         }
-
-        const driver = drivers.find(d => d.email === email && d.password === password);
-
-        if (driver) {
-            // Mark driver as Online
-            const updatedDrivers = drivers.map(d =>
-                d.id === driver.id
-                    ? { ...d, status: 'Online', lastSeen: new Date().toLocaleString('pt-BR') }
-                    : d
-            );
-            localStorage.setItem('drivers', JSON.stringify(updatedDrivers));
-
-            localStorage.setItem('isAuthenticated', 'true');
-            localStorage.setItem('userRole', 'driver');
-            localStorage.setItem('currentUserId', driver.id);
-            localStorage.setItem('currentUserName', driver.name);
-
-            navigate('/display');
-            return;
-        }
-
-        setError('E-mail ou senha incorretos.');
     };
 
     return (
         <div className="login-page">
             <div className="login-bg-glow"></div>
-
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="login-card glass"
-            >
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="login-card glass">
                 <div className="login-header">
-                    <div className="logo-container">
-                        <LogIn size={32} color="var(--primary)" />
-                    </div>
+                    <div className="logo-container"><LogIn size={32} color="var(--primary)" /></div>
                     <h1>Mídia Indoor</h1>
-                    <p>{redirectTo === 'admin' ? 'Acesso Administrativo' : 'Acesso do Motorista'}</p>
+                    <p>{redirectTo === 'admin' ? 'Acesso Administrativo' : 'Acesso Cloud do Motorista'}</p>
                 </div>
 
                 <form onSubmit={handleLogin}>
-                    {error && (
-                        <motion.div
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className="error-message"
-                        >
-                            <AlertCircle size={18} />
-                            <span>{error}</span>
-                        </motion.div>
-                    )}
-
-                    <div className="form-group">
-                        <label>E-mail</label>
-                        <div className="input-wrapper">
-                            <Mail size={18} className="input-icon" />
-                            <input
-                                type="email"
-                                placeholder="nome@exemplo.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    <div className="form-group">
-                        <label>Senha</label>
-                        <div className="input-wrapper">
-                            <Lock size={18} className="input-icon" />
-                            <input
-                                type="password"
-                                placeholder="••••••••"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    <button type="submit" className="login-btn btn-primary">
-                        Acessar Sistema
-                    </button>
+                    {error && <div className="error-message"><AlertCircle size={18} /><span>{error}</span></div>}
+                    <div className="form-group"><label>E-mail</label><div className="input-wrapper"><Mail size={18} className="input-icon" /><input type="email" placeholder="nome@exemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} required /></div></div>
+                    <div className="form-group"><label>Senha</label><div className="input-wrapper"><Lock size={18} className="input-icon" /><input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required /></div></div>
+                    <button type="submit" className="login-btn btn-primary" disabled={isLoggingIn}>{isLoggingIn ? 'Autenticando Cloud...' : 'Acessar Sistema'}</button>
                 </form>
-
-                <div className="login-footer">
-                    <p>© 2026 Media Indoor Tablet</p>
-                </div>
             </motion.div>
         </div>
     );
