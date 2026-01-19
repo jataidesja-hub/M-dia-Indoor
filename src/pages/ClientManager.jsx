@@ -3,8 +3,8 @@ import { motion } from 'framer-motion';
 import { UserPlus, Search, Edit2, Trash2, Link, Upload, Video as VideoIcon, Calendar, Info, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import Modal from '../components/Modal';
 import { db, storage, collections } from '../firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from "firebase/firestore";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import './VideoManager.css';
 
 const ClientManager = () => {
@@ -25,7 +25,7 @@ const ClientManager = () => {
             setClients(clientsList);
         }, (error) => {
             console.error("Erro no Firestore:", error);
-            alert("Erro de permissão no Firebase! Verifique se ativou o Firestore em 'Modo de Teste'.");
+            alert("Erro de permissão no Firebase! Verifique se ativou o Firestore em 'Modo de Teste' e as REGRAS estão abertas.");
         });
         return () => unsubscribe();
     }, []);
@@ -61,10 +61,6 @@ const ClientManager = () => {
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            if (file.size > 50 * 1024 * 1024) { // 50MB limit
-                alert("Vídeo muito grande! Tente um arquivo com menos de 50MB.");
-                return;
-            }
             setFormData({ ...formData, videoType: 'local', videoFile: file, videoName: file.name, videoUrl: '' });
         }
     };
@@ -87,8 +83,8 @@ const ClientManager = () => {
                             setUploadProgress(Math.round(progress));
                         },
                         (error) => {
-                            console.error("Erro no upload:", error);
-                            alert("ERRO NO UPLOAD: " + error.code + " - " + error.message + "\n\nIsso geralmente significa que a aba 'STORAGE' no Firebase ainda não foi ativada em modo de teste.");
+                            console.error("Erro detalhado no upload:", error);
+                            alert("ERRO NO GOOGLE STORAGE: " + error.code + " - " + error.message);
                             reject(error);
                         },
                         async () => {
@@ -117,10 +113,9 @@ const ClientManager = () => {
                 await addDoc(collection(db, collections.CLIENTS), clientData);
             }
             setIsModalOpen(false);
-            alert("Sucesso! O cliente e o vídeo foram sincronizados na nuvem.");
         } catch (error) {
             console.error("Falha geral:", error);
-            alert('ERRO CRÍTICO: ' + error.message + '\n\nCertifique-se que ativou o "Storage" em modo de teste no console do Firebase.');
+            alert('ERRO AO SALVAR: ' + error.message);
         } finally {
             setIsSaving(false);
             setUploadProgress(0);
@@ -129,18 +124,14 @@ const ClientManager = () => {
 
     const handleDelete = async (id) => {
         if (window.confirm('Excluir este cliente e vídeo da nuvem?')) {
-            try {
-                await deleteDoc(doc(db, collections.CLIENTS, id));
-            } catch (err) {
-                alert("Erro ao deletar: " + err.message);
-            }
+            await deleteDoc(doc(db, collections.CLIENTS, id));
         }
     };
 
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="manager-container">
             <header className="manager-header">
-                <h1>Gerenciamento de Clientes</h1>
+                <h1>Painel de Anunciantes</h1>
                 <button className="btn-primary" onClick={() => handleOpenModal()}>
                     <UserPlus size={20} />
                     <span>Novo Cliente</span>
@@ -160,30 +151,26 @@ const ClientManager = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {clients.length === 0 ? (
-                            <tr><td colSpan="6" className="text-center p-4">Nenhum cliente sincronizado na nuvem.</td></tr>
-                        ) : (
-                            clients.map((c) => (
-                                <tr key={c.id}>
-                                    <td><strong>{c.name}</strong></td>
-                                    <td><span className="badge-plan">{c.plan}</span></td>
-                                    <td>{c.startDate} até {c.endDate}</td>
-                                    <td>
-                                        <div className="video-cell-mini">
-                                            <VideoIcon size={14} color="var(--primary)" />
-                                            <span>{c.videoName}</span>
-                                        </div>
-                                    </td>
-                                    <td><span className={`badge ${c.status === 'Ativo' ? 'success' : 'warning'}`}>{c.status}</span></td>
-                                    <td className="text-right">
-                                        <div className="action-buttons">
-                                            <button className="icon-btn edit" onClick={() => handleOpenModal(c)}><Edit2 size={16} /></button>
-                                            <button className="icon-btn delete" onClick={() => handleDelete(c.id)}><Trash2 size={16} /></button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
+                        {clients.map((c) => (
+                            <tr key={c.id}>
+                                <td>{c.name}</td>
+                                <td><span className="badge-plan">{c.plan}</span></td>
+                                <td>{c.startDate} a {c.endDate}</td>
+                                <td>
+                                    <div className="video-cell-mini">
+                                        <VideoIcon size={14} />
+                                        <span>{c.videoName}</span>
+                                    </div>
+                                </td>
+                                <td><span className={`badge ${c.status === 'Ativo' ? 'success' : 'warning'}`}>{c.status}</span></td>
+                                <td className="text-right">
+                                    <div className="action-buttons">
+                                        <button className="icon-btn edit" onClick={() => handleOpenModal(c)}><Edit2 size={16} /></button>
+                                        <button className="icon-btn delete" onClick={() => handleDelete(c.id)}><Trash2 size={16} /></button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
                     </tbody>
                 </table>
             </div>
@@ -210,20 +197,20 @@ const ClientManager = () => {
                         <div className="tab-content">
                             {formData.videoType === 'link' ? (
                                 <div className="form-group">
-                                    <label>URL do Vídeo (Google Drive/Dropbox)</label>
-                                    <input type="url" placeholder="https://..." value={formData.videoUrl} onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value, videoName: 'Link Externo' })} disabled={isSaving} />
+                                    <label>URL do Vídeo</label>
+                                    <input type="url" placeholder="https://..." value={formData.videoUrl} onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value, videoName: 'Vídeo Externo' })} disabled={isSaving} />
                                 </div>
                             ) : (
                                 <div className="form-group">
                                     <div className={`upload-container ${formData.videoFile ? 'has-file' : ''}`} onClick={() => !isSaving && document.getElementById('v-up').click()}>
                                         {isSaving ? <Loader2 className="animate-spin" size={32} /> : (formData.videoFile ? <CheckCircle2 size={32} color="var(--primary)" /> : <Upload size={32} />)}
-                                        <span>{formData.videoName || 'Clique para escolher o vídeo'}</span>
+                                        <span>{formData.videoName || 'Escolher vídeo do computador'}</span>
                                         <input id="v-up" type="file" accept="video/*" style={{ display: 'none' }} onChange={handleFileChange} disabled={isSaving} />
                                     </div>
-                                    {isSaving && uploadProgress > 0 && (
+                                    {isSaving && (
                                         <div className="progress-wrapper mt-2">
                                             <div className="progress-bar-bg"><div className="progress-bar-fill" style={{ width: `${uploadProgress}%` }}></div></div>
-                                            <span className="progress-text">{uploadProgress}% concluído...</span>
+                                            <span className="progress-text">{uploadProgress}% enviado para o Google</span>
                                         </div>
                                     )}
                                 </div>
@@ -234,7 +221,7 @@ const ClientManager = () => {
                     <div className="modal-footer">
                         <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)} disabled={isSaving}>Cancelar</button>
                         <button type="submit" className="btn-primary" disabled={isSaving}>
-                            {isSaving ? `Enviando (${uploadProgress}%)` : 'Salvar na Nuvem'}
+                            {isSaving ? `Progresso: ${uploadProgress}%` : 'Salvar na Nuvem'}
                         </button>
                     </div>
                 </form>

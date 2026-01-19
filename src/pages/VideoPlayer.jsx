@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertCircle, Loader2, Play, LogOut, RefreshCw } from 'lucide-react';
+import { AlertCircle, Loader2, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { db, collections } from '../firebase';
-import { doc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import './VideoPlayer.css';
 
 const VideoPlayer = () => {
@@ -15,7 +15,6 @@ const VideoPlayer = () => {
     const driverName = localStorage.getItem('currentUserName') || 'Motorista';
     const driverId = localStorage.getItem('currentUserId');
 
-    // Escutar Playlist da Nuvem
     useEffect(() => {
         const unsubscribe = onSnapshot(doc(db, 'global', 'playlist'), (snap) => {
             if (snap.exists()) {
@@ -35,7 +34,11 @@ const VideoPlayer = () => {
 
     const handleLogout = async () => {
         if (driverId) {
-            await updateDoc(doc(db, collections.DRIVERS, driverId), { status: 'Offline' });
+            try {
+                await updateDoc(doc(db, collections.DRIVERS, driverId), { status: 'Offline' });
+            } catch (err) {
+                console.error("Logout update failed", err);
+            }
         }
         localStorage.clear();
         navigate('/');
@@ -55,8 +58,8 @@ const VideoPlayer = () => {
             <div className="player-fullscreen placeholder-screen">
                 <div className="player-status glass">
                     <AlertCircle size={48} color="var(--primary)" />
-                    <h2>Aguardando Grade Cloud</h2>
-                    <p>Suba vídeos no painel ADM para sincronizar.</p>
+                    <h2>Aguardando Playlist</h2>
+                    <p>Suba vídeos no painel ADM e adicione-os na grade.</p>
                     <button className="logout-mini" onClick={handleLogout}><LogOut size={16} /> Sair</button>
                 </div>
             </div>
@@ -87,19 +90,19 @@ const VideoPlayer = () => {
             {isLoading && !error && (
                 <div className="player-loader">
                     <Loader2 className="animate-spin" size={48} />
-                    <p>Sincronizando Mídia Cloud...</p>
+                    <p>Carregando Mídia Cloud...</p>
                 </div>
             )}
 
             <div className="player-overlay">
                 <div className="brand-dot"></div>
-                <span className="live-tag">CLOUD-SYNC: {currentVideo.videoName}</span>
+                <span className="live-tag">ARQUIVO: {currentVideo.videoName}</span>
                 <button className="logout-corner" onClick={handleLogout}><LogOut size={16} /></button>
             </div>
 
             <div className="client-brand">
                 <span className="advertiser-name">{currentVideo.name}</span>
-                <div className="driver-info">Operador: {driverName}</div>
+                <div className="driver-info">Logado: {driverName}</div>
             </div>
         </div>
     );

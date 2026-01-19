@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { UserPlus, Search, Edit2, Trash2, Mail, Lock, Truck } from 'lucide-react';
+import { UserPlus, Edit2, Trash2 } from 'lucide-react';
 import Modal from '../components/Modal';
 import { db, collections } from '../firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot } from "firebase/firestore";
 import './VideoManager.css';
 
 const DriverManager = () => {
@@ -48,7 +48,7 @@ const DriverManager = () => {
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('Excluir motorista da nuvem?')) {
+        if (window.confirm('Excluir motorista?')) {
             await deleteDoc(doc(db, collections.DRIVERS, id));
         }
     };
@@ -56,7 +56,7 @@ const DriverManager = () => {
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="manager-container">
             <header className="manager-header">
-                <h1>Motoristas (Nuvem)</h1>
+                <h1>Gestão de Motoristas</h1>
                 <button className="btn-primary" onClick={() => handleOpenModal()}>
                     <UserPlus size={20} />
                     <span>Novo Motorista</span>
@@ -80,11 +80,7 @@ const DriverManager = () => {
                                 <td>{d.name}</td>
                                 <td>{d.vehicle}</td>
                                 <td>{d.email}</td>
-                                <td>
-                                    <span className={`badge ${d.status === 'Online' ? 'success' : 'warning'}`}>
-                                        {d.status}
-                                    </span>
-                                </td>
+                                <td><span className={`badge ${d.status === 'Online' ? 'success' : 'warning'}`}>{d.status}</span></td>
                                 <td className="text-right">
                                     <div className="action-buttons">
                                         <button className="icon-btn edit" onClick={() => handleOpenModal(d)}><Edit2 size={16} /></button>
@@ -100,14 +96,14 @@ const DriverManager = () => {
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingDriver ? "Editar Motorista" : "Novo Motorista"}>
                 <form onSubmit={handleSave}>
                     <div className="form-group"><label>Nome</label><input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} /></div>
-                    <div className="form-group"><label>Veículo</label><input type="text" required value={formData.vehicle} onChange={(e) => setFormData({ ...formData, vehicle: e.target.value })} /></div>
+                    <div className="form-group"><label>Placa/Veículo</label><input type="text" required value={formData.vehicle} onChange={(e) => setFormData({ ...formData, vehicle: e.target.value })} /></div>
                     <div className="form-grid">
                         <div className="form-group"><label>E-mail</label><input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} /></div>
                         <div className="form-group"><label>Senha</label><input type="text" required value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} /></div>
                     </div>
                     <div className="modal-footer">
                         <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-                        <button type="submit" className="btn-primary">Salvar na Nuvem</button>
+                        <button type="submit" className="btn-primary">Salvar Motorista</button>
                     </div>
                 </form>
             </Modal>

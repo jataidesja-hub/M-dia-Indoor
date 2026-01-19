@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, LogIn, AlertCircle } from 'lucide-react';
 import { db, collections } from '../firebase';
-import { collection, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { collection, getDocs, updateDoc, doc } from "firebase/firestore";
 import './Login.css';
 
 const Login = () => {
@@ -20,7 +20,6 @@ const Login = () => {
         setError('');
         setIsLoggingIn(true);
 
-        // Admin Credentials (Hardcoded for simplicity, but could be cloud)
         if (email === 'admin@midia.com' && password === 'admin123') {
             localStorage.setItem('isAuthenticated', 'true');
             localStorage.setItem('userRole', 'admin');
@@ -29,7 +28,6 @@ const Login = () => {
         }
 
         try {
-            // Driver Login from Cloud
             const querySnapshot = await getDocs(collection(db, collections.DRIVERS));
             const drivers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             const driver = drivers.find(d => d.email === email && d.password === password);
@@ -50,7 +48,7 @@ const Login = () => {
                 setError('E-mail ou senha incorretos.');
             }
         } catch (err) {
-            setError('Erro ao conectar com a nuvem: ' + err.message);
+            setError('Erro de conexão: ' + err.message);
         } finally {
             setIsLoggingIn(false);
         }
@@ -63,14 +61,14 @@ const Login = () => {
                 <div className="login-header">
                     <div className="logo-container"><LogIn size={32} color="var(--primary)" /></div>
                     <h1>Mídia Indoor</h1>
-                    <p>{redirectTo === 'admin' ? 'Acesso Administrativo' : 'Acesso Cloud do Motorista'}</p>
+                    <p>{redirectTo === 'admin' ? 'Painel ADM' : 'Acesso de Motorista'}</p>
                 </div>
 
                 <form onSubmit={handleLogin}>
                     {error && <div className="error-message"><AlertCircle size={18} /><span>{error}</span></div>}
                     <div className="form-group"><label>E-mail</label><div className="input-wrapper"><Mail size={18} className="input-icon" /><input type="email" placeholder="nome@exemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} required /></div></div>
                     <div className="form-group"><label>Senha</label><div className="input-wrapper"><Lock size={18} className="input-icon" /><input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required /></div></div>
-                    <button type="submit" className="login-btn btn-primary" disabled={isLoggingIn}>{isLoggingIn ? 'Autenticando Cloud...' : 'Acessar Sistema'}</button>
+                    <button type="submit" className="login-btn btn-primary" disabled={isLoggingIn}>{isLoggingIn ? 'Entrando...' : 'Acessar'}</button>
                 </form>
             </motion.div>
         </div>

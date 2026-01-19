@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, ArrowUp, ArrowDown, Video as VideoIcon, Save, Play } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { db, collections } from '../firebase';
-import { collection, doc, updateDoc, onSnapshot, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { collection, doc, onSnapshot, setDoc } from "firebase/firestore";
 import './VideoManager.css';
 
 const VideoManager = () => {
     const [availableVideos, setAvailableVideos] = useState([]);
     const [playlist, setPlaylist] = useState([]);
 
-    // Sincronizar Vídeos de Clientes e Playlist da Nuvem
     useEffect(() => {
         const unsubClients = onSnapshot(collection(db, collections.CLIENTS), (snap) => {
             const videos = snap.docs
@@ -56,12 +55,12 @@ const VideoManager = () => {
     return (
         <div className="manager-container">
             <header className="manager-header">
-                <h1>Grade de Programação (Nuvem)</h1>
+                <h1>Grade de Exibição</h1>
             </header>
 
             <div className="dash-two-columns">
                 <section className="glass p-4">
-                    <h3>Vídeos de Clientes Ativos</h3>
+                    <h3>Vídeos Disponíveis</h3>
                     <div className="video-list-grid mt-4">
                         {availableVideos.map(video => (
                             <div key={video.id} className="video-card-mini glass">
@@ -76,7 +75,7 @@ const VideoManager = () => {
                 </section>
 
                 <section className="glass p-4">
-                    <h3>Playlist Atual (Ordem de Exibição)</h3>
+                    <h3>Playlist em Reprodução</h3>
                     <div className="playlist-order-list mt-4">
                         {playlist.map((item, index) => (
                             <div key={item.id} className="playlist-item glass">
