@@ -1,23 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import './VideoPlayer.css';
 
 const VideoPlayer = () => {
     const [playlist, setPlaylist] = useState([]);
     const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(false);
     const videoRef = useRef(null);
 
-    // Function to convert Google Drive share links to direct download links
     const getDirectVideoUrl = (url) => {
         if (!url) return '';
-
-        // Handle Google Drive Links
         if (url.includes('drive.google.com')) {
             let fileId = '';
             const match = url.match(/\/file\/d\/([^\/]+)/) || url.match(/id=([^&]+)/);
             if (match && match[1]) {
                 fileId = match[1];
-                return `https://docs.google.com/uc?export=download&id=${fileId}`;
+                // Try the most direct uc link
+                return `https://docs.google.com/uc?id=${fileId}&export=download`;
             }
         }
         return url;
@@ -32,6 +32,8 @@ const VideoPlayer = () => {
 
     const handleVideoEnd = () => {
         if (playlist.length > 0) {
+            setError(false);
+            setIsLoading(true);
             setCurrentVideoIndex((prev) => (prev + 1) % playlist.length);
         }
     };
@@ -40,11 +42,13 @@ const VideoPlayer = () => {
         if (videoRef.current && playlist.length > 0) {
             const playVideo = async () => {
                 try {
+                    setError(false);
                     videoRef.current.load();
                     await videoRef.current.play();
-                } catch (error) {
-                    console.log("Autoplay failed, trying again in 1s...");
-                    setTimeout(playVideo, 1000);
+                    setIsLoading(false);
+                } catch (err) {
+                    console.log("Play failed, retrying...");
+                    // No setIsLoading(false) here, keep loader if it's not playing
                 }
             };
             playVideo();
@@ -56,8 +60,8 @@ const VideoPlayer = () => {
             <div className="player-fullscreen placeholder-screen">
                 <div className="player-status glass">
                     <AlertCircle size={48} color="var(--primary)" />
-                    <h2>Aguardando Playlist</h2>
-                    <p>Configure os vídeos no painel administrativo.</p>
+                    <h2>Aguardando Configuração</h2>
+                    <p>Adicione vídeos no Painel ADM.</p>
                 </div>
             </div>
         );
@@ -73,16 +77,42 @@ const VideoPlayer = () => {
                 key={currentVideo.id + currentVideoIndex}
                 src={videoUrl}
                 onEnded={handleVideoEnd}
+                onPlaying={() => setIsLoading(false)}
+                onLoadStart={() => setIsLoading(true)}
                 muted
                 autoPlay
                 playsInline
                 className="full-video"
-                style={{ width: '100vw', height: '100vh', objectFit: 'cover' }}
+                style={{
+                    width: '100vw',
+                    height: '100vh',
+                    objectFit: 'cover',
+                    display: error ? 'none' : 'block'
+                }}
                 onError={(e) => {
-                    console.error("Video error, skipping...", e);
-                    setTimeout(handleVideoEnd, 2000);
+                    console.error("Erro no vídeo:", currentVideo.videoName);
+                    setError(true);
+                    setIsLoading(false);
+                    // Pula para o próximo após 5 segundos se der erro
+                    setTimeout(handleVideoEnd, 5000);
                 }}
             />
+
+            {isLoading && !error && (
+                <div className="player-loader">
+                    <Loader2 className="animate-spin" size={48} />
+                    <p>Carregando Mídia...</p>
+                </div>
+            )}
+
+            {error && (
+                <div className="player-error">
+                    <AlertCircle size={48} color="var(--danger)" />
+                    <h2>Erro ao Carregar Vídeo</h2>
+                    <p>O link do Google Drive pode estar bloqueado ou o arquivo é muito grande.</p>
+                    <p className="small">Tentando próximo em instantes...</p>
+                </div>
+            )}
 
             <div className="player-overlay">
                 <div className="brand-dot"></div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { UserPlus, Search, Edit2, Trash2, Link, Upload, Video as VideoIcon, Calendar, Info } from 'lucide-react';
+import { UserPlus, Search, Edit2, Trash2, Link, Upload, Video as VideoIcon, Calendar, Info, AlertCircle } from 'lucide-react';
 import Modal from '../components/Modal';
 import './VideoManager.css';
 
@@ -216,22 +216,22 @@ const ClientManager = () => {
                     </div>
 
                     <div className="form-group">
-                        <label>URL do Vídeo (Recomendado para Tablets)</label>
+                        <label>URL do Vídeo (Google Drive, Dropbox, etc)</label>
                         <div className="input-with-icon">
                             <Link size={18} />
                             <input
                                 type="url"
-                                placeholder="https://exemplo.com/video.mp4"
+                                placeholder="https://drive.google.com/file/d/..."
                                 value={formData.videoUrl}
                                 onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
                             />
                         </div>
-                        <p className="field-hint">Use links diretos de vídeos (.mp4, .webm) para garantir a reprodução.</p>
+                        <p className="field-hint">No GDrive, o vídeo deve ter menos de 100MB e estar como "Público".</p>
                     </div>
 
-                    <div className="info-box glass">
-                        <Info size={16} />
-                        <p>Para exibir vídeos locais sem internet, use a opção de "Selecionar Arquivo" no Player do Tablet.</p>
+                    <div className="info-box glass" style={{ borderColor: 'var(--warning)', color: '#fbbf24', background: 'rgba(251, 191, 36, 0.05)' }}>
+                        <AlertCircle size={16} />
+                        <p><strong>Aviso:</strong> Se a tela ficar preta, o arquivo é muito grande ou o link está bloqueado pelo Google. Tente reduzir o tamanho do vídeo.</p>
                     </div>
 
                     <div className="modal-footer">
