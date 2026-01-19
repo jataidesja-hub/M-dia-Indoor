@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { UserPlus, Search, Edit2, Trash2, Upload, Video as VideoIcon, Calendar } from 'lucide-react';
+import { UserPlus, Search, Edit2, Trash2, Link, Upload, Video as VideoIcon, Calendar, Info } from 'lucide-react';
 import Modal from '../components/Modal';
 import './VideoManager.css';
 
 const ClientManager = () => {
-    // Initial state from localStorage or mock
     const [clients, setClients] = useState(() => {
         const saved = localStorage.getItem('clients');
         return saved ? JSON.parse(saved) : [
-            { id: 1, name: 'João Silva', email: 'joao@transporte.com', phone: '(11) 99999-9999', plan: 'Mensal', status: 'Ativo', videoName: 'propaganda_v1.mp4', startDate: '2026-01-01', endDate: '2026-01-31' },
-            { id: 2, name: 'Maria Santos', email: 'maria@logistica.com', phone: '(11) 88888-8888', plan: 'Trimestral', status: 'Ativo', videoName: 'institucional.mp4', startDate: '2026-01-15', endDate: '2026-04-15' },
+            { id: 1, name: 'Exemplo Coca-Cola', email: 'contato@coca.com', phone: '(11) 99999-0000', plan: 'Mensal', status: 'Ativo', videoName: 'propaganda_v1.mp4', videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-city-traffic-at-night-seen-from-above-41005-large.mp4', startDate: '2026-01-01', endDate: '2026-01-31' },
         ];
     });
 
@@ -26,13 +24,12 @@ const ClientManager = () => {
         phone: '',
         plan: 'Mensal',
         status: 'Ativo',
-        videoFile: null,
+        videoUrl: '',
         videoName: '',
         startDate: new Date().toISOString().split('T')[0],
         endDate: ''
     });
 
-    // Auto-calculate end date when plan or start date changes
     useEffect(() => {
         if (formData.startDate) {
             const start = new Date(formData.startDate);
@@ -55,8 +52,8 @@ const ClientManager = () => {
                 phone: client.phone,
                 plan: client.plan,
                 status: client.status,
+                videoUrl: client.videoUrl || '',
                 videoName: client.videoName || '',
-                videoFile: null,
                 startDate: client.startDate || new Date().toISOString().split('T')[0],
                 endDate: client.endDate || ''
             });
@@ -68,20 +65,13 @@ const ClientManager = () => {
                 phone: '',
                 plan: 'Mensal',
                 status: 'Ativo',
-                videoFile: null,
+                videoUrl: '',
                 videoName: '',
                 startDate: new Date().toISOString().split('T')[0],
                 endDate: ''
             });
         }
         setIsModalOpen(true);
-    };
-
-    const handleFileChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setFormData({ ...formData, videoFile: file, videoName: file.name });
-        }
     };
 
     const handleSave = (e) => {
@@ -92,7 +82,8 @@ const ClientManager = () => {
             phone: formData.phone,
             plan: formData.plan,
             status: formData.status,
-            videoName: formData.videoName,
+            videoUrl: formData.videoUrl,
+            videoName: formData.videoName || (formData.videoUrl ? 'Vídeo via Link' : ''),
             startDate: formData.startDate,
             endDate: formData.endDate
         };
@@ -126,6 +117,7 @@ const ClientManager = () => {
                     <input type="text" placeholder="Buscar por nome ou e-mail..." />
                 </div>
             </div>
+
             <div className="table-container glass">
                 <table className="custom-table">
                     <thead>
@@ -193,6 +185,7 @@ const ClientManager = () => {
                             <input type="text" required value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
                         </div>
                     </div>
+
                     <div className="form-grid">
                         <div className="form-group">
                             <label>Plano</label>
@@ -223,18 +216,22 @@ const ClientManager = () => {
                     </div>
 
                     <div className="form-group">
-                        <label>Vídeo do Cliente</label>
-                        <div className="upload-container" onClick={() => document.getElementById('video-upload').click()}>
-                            <Upload size={20} />
-                            <span>{formData.videoName || 'Clique para subir o vídeo'}</span>
+                        <label>URL do Vídeo (Recomendado para Tablets)</label>
+                        <div className="input-with-icon">
+                            <Link size={18} />
                             <input
-                                id="video-upload"
-                                type="file"
-                                accept="video/*"
-                                style={{ display: 'none' }}
-                                onChange={handleFileChange}
+                                type="url"
+                                placeholder="https://exemplo.com/video.mp4"
+                                value={formData.videoUrl}
+                                onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
                             />
                         </div>
+                        <p className="field-hint">Use links diretos de vídeos (.mp4, .webm) para garantir a reprodução.</p>
+                    </div>
+
+                    <div className="info-box glass">
+                        <Info size={16} />
+                        <p>Para exibir vídeos locais sem internet, use a opção de "Selecionar Arquivo" no Player do Tablet.</p>
                     </div>
 
                     <div className="modal-footer">

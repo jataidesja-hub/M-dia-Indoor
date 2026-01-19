@@ -76,3 +76,36 @@
   margin-bottom: 10px;
 }
 
+
+.interaction-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 100;
+  cursor: pointer;
+  gap: 20px;
+}
+
+.interaction-overlay p {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.interaction-overlay:hover {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.full-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: black;
+}
+
