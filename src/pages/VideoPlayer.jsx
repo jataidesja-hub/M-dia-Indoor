@@ -1,13 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Maximize, VolumeX, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import './VideoPlayer.css';
 
 const VideoPlayer = () => {
     const [playlist, setPlaylist] = useState([]);
     const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [needsInteraction, setNeedsInteraction] = useState(false);
     const videoRef = useRef(null);
+
+    // Function to convert Google Drive share links to direct download links
+    const getDirectVideoUrl = (url) => {
+        if (!url) return '';
+
+        // Handle Google Drive Links
+        if (url.includes('drive.google.com')) {
+            let fileId = '';
+            const match = url.match(/\/file\/d\/([^\/]+)/) || url.match(/id=([^&]+)/);
+            if (match && match[1]) {
+                fileId = match[1];
+                return `https://docs.google.com/uc?export=download&id=${fileId}`;
+            }
+        }
+        return url;
+    };
 
     useEffect(() => {
         const savedPlaylist = localStorage.getItem('playlist');
@@ -22,27 +36,18 @@ const VideoPlayer = () => {
         }
     };
 
-    const startPlayback = () => {
-        if (videoRef.current) {
-            videoRef.current.play()
-                .then(() => {
-                    setIsPlaying(true);
-                    setNeedsInteraction(false);
-                })
-                .catch(err => {
-                    console.error("Playback failed:", err);
-                    setNeedsInteraction(true);
-                });
-        }
-    };
-
     useEffect(() => {
-        if (playlist.length > 0) {
-            // Short delay to ensure video element is ready
-            const timer = setTimeout(() => {
-                startPlayback();
-            }, 500);
-            return () => clearTimeout(timer);
+        if (videoRef.current && playlist.length > 0) {
+            const playVideo = async () => {
+                try {
+                    videoRef.current.load();
+                    await videoRef.current.play();
+                } catch (error) {
+                    console.log("Autoplay failed, trying again in 1s...");
+                    setTimeout(playVideo, 1000);
+                }
+            };
+            playVideo();
         }
     }, [currentVideoIndex, playlist]);
 
@@ -51,49 +56,41 @@ const VideoPlayer = () => {
             <div className="player-fullscreen placeholder-screen">
                 <div className="player-status glass">
                     <AlertCircle size={48} color="var(--primary)" />
-                    <h2>Playlist Vazia</h2>
-                    <p>Configure a ordem de exibição no Painel Administrativo.</p>
+                    <h2>Aguardando Playlist</h2>
+                    <p>Configure os vídeos no painel administrativo.</p>
                 </div>
             </div>
         );
     }
 
     const currentVideo = playlist[currentVideoIndex];
-    // Use the URL from the video object, fallback to placeholder IF none exists
-    const videoUrl = currentVideo.videoUrl || 'https://assets.mixkit.co/videos/preview/mixkit-city-traffic-at-night-seen-from-above-41005-large.mp4';
+    const videoUrl = getDirectVideoUrl(currentVideo.videoUrl);
 
     return (
-        <div className="player-fullscreen">
+        <div className="player-fullscreen" style={{ background: 'black' }}>
             <video
                 ref={videoRef}
-                key={currentVideo.id + videoUrl}
+                key={currentVideo.id + currentVideoIndex}
                 src={videoUrl}
                 onEnded={handleVideoEnd}
                 muted
                 autoPlay
                 playsInline
                 className="full-video"
+                style={{ width: '100vw', height: '100vh', objectFit: 'cover' }}
                 onError={(e) => {
-                    console.error("Video error:", e);
-                    // Auto-skip if video fails
-                    setTimeout(handleVideoEnd, 3000);
+                    console.error("Video error, skipping...", e);
+                    setTimeout(handleVideoEnd, 2000);
                 }}
             />
 
-            {needsInteraction && (
-                <div className="interaction-overlay glass" onClick={startPlayback}>
-                    <Play size={64} fill="white" />
-                    <p>Toque para Iniciar a Reprodução</p>
-                </div>
-            )}
-
             <div className="player-overlay">
                 <div className="brand-dot"></div>
-                <span className="live-tag">EXIBINDO: {currentVideo.videoName}</span>
+                <span className="live-tag">REPRODUZINDO: {currentVideo.videoName}</span>
             </div>
 
             <div className="client-brand">
-                Anunciante: {currentVideo.name}
+                {currentVideo.name}
             </div>
         </div>
     );
