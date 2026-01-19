@@ -145,3 +145,14 @@
 .animate-pulse {
     animation: pulse 2s infinite ease-in-out;
 }
+
+.activity-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--text-muted);
+    font-style: italic;
+    border: 1px dashed var(--glass-border);
+    border-radius: var(--radius-md);
+}

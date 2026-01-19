@@ -13,10 +13,10 @@ import './Dashboard.css';
 
 const Dashboard = () => {
     const stats = [
-        { title: 'Dispositivos Online', value: '12', icon: Signal, color: '#10b981', trend: '+2 hoje' },
-        { title: 'Vídeos Ativos', value: '48', icon: Video, color: '#3b82f6', trend: 'Total da rede' },
-        { title: 'Clientes', value: '24', icon: Users, color: '#8b5cf6', trend: '+3 este mês' },
-        { title: 'Tempo Exibição', value: '124h', icon: Clock, color: '#f59e0b', trend: 'Últimas 24h' }
+        { title: 'Dispositivos Online', value: '0', icon: Signal, color: '#10b981', trend: 'Aguardando conexão' },
+        { title: 'Vídeos Ativos', value: '0', icon: Video, color: '#3b82f6', trend: 'Nenhum vídeo' },
+        { title: 'Clientes', value: '0', icon: Users, color: '#8b5cf6', trend: 'Inicie agora' },
+        { title: 'Tempo Exibição', value: '0h', icon: Clock, color: '#f59e0b', trend: 'Sem atividade' }
     ];
 
     return (
@@ -54,17 +54,9 @@ const Dashboard = () => {
                 <div className="content-card glass recent-activity">
                     <h3>Atividade Recente</h3>
                     <div className="activity-list">
-                        {[1, 2, 3, 4].map((item) => (
-                            <div key={item} className="activity-item">
-                                <div className="activity-icon blue">
-                                    <Video size={16} />
-                                </div>
-                                <div className="activity-info">
-                                    <p className="activity-title">Novo vídeo configurado</p>
-                                    <p className="activity-time">Há 5 minutos - Tablet #04</p>
-                                </div>
-                            </div>
-                        ))}
+                        <div className="activity-placeholder">
+                            <p>Nenhuma atividade registrada ainda.</p>
+                        </div>
                     </div>
                 </div>
             </div>

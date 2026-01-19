@@ -1,36 +1,76 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { UserPlus, Search, Edit2, Trash2 } from 'lucide-react';
+import { UserPlus, Search, Edit2, Trash2, Upload, Video as VideoIcon } from 'lucide-react';
 import Modal from '../components/Modal';
 import './VideoManager.css';
 
 const ClientManager = () => {
     const [clients, setClients] = useState([
-        { id: 1, name: 'João Silva', email: 'joao@transporte.com', phone: '(11) 99999-9999', plan: 'Premium', status: 'Ativo' },
-        { id: 2, name: 'Maria Santos', email: 'maria@logistica.com', phone: '(11) 88888-8888', plan: 'Básico', status: 'Inativo' },
+        { id: 1, name: 'João Silva', email: 'joao@transporte.com', phone: '(11) 99999-9999', plan: 'Mensal', status: 'Ativo', videoName: 'propaganda_v1.mp4' },
+        { id: 2, name: 'Maria Santos', email: 'maria@logistica.com', phone: '(11) 88888-8888', plan: 'Trimestral', status: 'Ativo', videoName: 'institucional.mp4' },
     ]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClient, setEditingClient] = useState(null);
-    const [formData, setFormData] = useState({ name: '', email: '', phone: '', plan: 'Premium', status: 'Ativo' });
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        phone: '',
+        plan: 'Mensal',
+        status: 'Ativo',
+        videoFile: null,
+        videoName: ''
+    });
 
     const handleOpenModal = (client = null) => {
         if (client) {
             setEditingClient(client);
-            setFormData({ name: client.name, email: client.email, phone: client.phone, plan: client.plan, status: client.status });
+            setFormData({
+                name: client.name,
+                email: client.email,
+                phone: client.phone,
+                plan: client.plan,
+                status: client.status,
+                videoName: client.videoName || '',
+                videoFile: null
+            });
         } else {
             setEditingClient(null);
-            setFormData({ name: '', email: '', phone: '', plan: 'Premium', status: 'Ativo' });
+            setFormData({
+                name: '',
+                email: '',
+                phone: '',
+                plan: 'Mensal',
+                status: 'Ativo',
+                videoFile: null,
+                videoName: ''
+            });
         }
         setIsModalOpen(true);
     };
 
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setFormData({ ...formData, videoFile: file, videoName: file.name });
+        }
+    };
+
     const handleSave = (e) => {
         e.preventDefault();
+        const clientData = {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            plan: formData.plan,
+            status: formData.status,
+            videoName: formData.videoName
+        };
+
         if (editingClient) {
-            setClients(clients.map(c => c.id === editingClient.id ? { ...c, ...formData } : c));
+            setClients(clients.map(c => c.id === editingClient.id ? { ...c, ...clientData } : c));
         } else {
-            setClients([...clients, { id: Date.now(), ...formData }]);
+            setClients([...clients, { id: Date.now(), ...clientData }]);
         }
         setIsModalOpen(false);
     };
@@ -61,9 +101,9 @@ const ClientManager = () => {
                     <thead>
                         <tr>
                             <th>Nome</th>
-                            <th>E-mail</th>
-                            <th>Telefone</th>
+                            <th>Contato</th>
                             <th>Plano</th>
+                            <th>Vídeo</th>
                             <th>Status</th>
                             <th className="text-right">Ações</th>
                         </tr>
@@ -72,9 +112,17 @@ const ClientManager = () => {
                         {clients.map((c) => (
                             <tr key={c.id}>
                                 <td>{c.name}</td>
-                                <td>{c.email}</td>
-                                <td>{c.phone}</td>
-                                <td>{c.plan}</td>
+                                <td>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{c.email}</div>
+                                    <div>{c.phone}</div>
+                                </td>
+                                <td><span className="badge-plan">{c.plan}</span></td>
+                                <td>
+                                    <div className="video-cell-mini">
+                                        <VideoIcon size={14} />
+                                        <span>{c.videoName || 'Sem vídeo'}</span>
+                                    </div>
+                                </td>
                                 <td>
                                     <span className={`badge ${c.status === 'Ativo' ? 'success' : 'warning'}`}>
                                         {c.status}
@@ -106,17 +154,42 @@ const ClientManager = () => {
                         <label>Telefone</label>
                         <input type="text" required value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
                     </div>
-                    <div className="form-group">
-                        <label>Plano</label>
-                        <select value={formData.plan} onChange={(e) => setFormData({ ...formData, plan: e.target.value })}>
-                            <option value="Premium">Premium</option>
-                            <option value="Básico">Básico</option>
-                            <option value="Empresarial">Empresarial</option>
-                        </select>
+                    <div className="form-grid">
+                        <div className="form-group">
+                            <label>Plano</label>
+                            <select value={formData.plan} onChange={(e) => setFormData({ ...formData, plan: e.target.value })}>
+                                <option value="Semanal">Semanal</option>
+                                <option value="Mensal">Mensal</option>
+                                <option value="Trimestral">Trimestral</option>
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label>Status</label>
+                            <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
+                                <option value="Ativo">Ativo</option>
+                                <option value="Inativo">Inativo</option>
+                            </select>
+                        </div>
                     </div>
+
+                    <div className="form-group">
+                        <label>Vídeo do Cliente</label>
+                        <div className="upload-container" onClick={() => document.getElementById('video-upload').click()}>
+                            <Upload size={20} />
+                            <span>{formData.videoName || 'Clique para subir o vídeo'}</span>
+                            <input
+                                id="video-upload"
+                                type="file"
+                                accept="video/*"
+                                style={{ display: 'none' }}
+                                onChange={handleFileChange}
+                            />
+                        </div>
+                    </div>
+
                     <div className="modal-footer">
                         <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-                        <button type="submit" className="btn-primary">Salvar</button>
+                        <button type="submit" className="btn-primary">Salvar Cliente</button>
                     </div>
                 </form>
             </Modal>
