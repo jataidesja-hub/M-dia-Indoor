@@ -88,6 +88,7 @@ const ClientManager = () => {
                         },
                         (error) => {
                             console.error("Erro no upload:", error);
+                            alert("ERRO NO UPLOAD: " + error.code + " - " + error.message + "\n\nIsso geralmente significa que a aba 'STORAGE' no Firebase ainda não foi ativada em modo de teste.");
                             reject(error);
                         },
                         async () => {
